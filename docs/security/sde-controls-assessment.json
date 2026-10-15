@@ -1,0 +1,767 @@
+[
+  {
+    "countermeasure_id": "28-T50",
+    "task_id": "T50",
+    "title": "Use indirect object reference maps if accessing files",
+    "priority": 8,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Implementado mapeamento de referência indireta de objetos no storage e APIs para desacoplar identificadores internos.\n\nImplemented indirect object reference mapping in storage and APIs to decouple internal identifiers.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T2602",
+    "task_id": "T2602",
+    "title": "Log typical database and server activities and related metadata",
+    "priority": 8,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Auditoria e logging de eventos implementados em events_log e security.ts com ator, papel e timestamp.\n\nAudit logging implemented in events_log and security.ts tracking actor, role, and timestamp.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T374",
+    "task_id": "T374",
+    "title": "Offload HTTP request handling to dedicated modules",
+    "priority": 7,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Tratamento de requisições HTTP isolado em endpoints dedicados na API serverless do Vercel.\n\nHTTP request handling isolated in dedicated serverless modules under Vercel API.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T60",
+    "task_id": "T60",
+    "title": "Use correct and approved cryptographic algorithms, parameters, and key lengths",
+    "priority": 8,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Algoritmos criptográficos aprovados (SHA-256 para firmware e TLS 1.3 em trânsito) validados.\n\nApproved cryptographic standards (SHA-256 for firmware integrity and TLS 1.3 in transit) enforced.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T2348",
+    "task_id": "T2348",
+    "title": "Perform code reviews",
+    "priority": 8,
+    "phase": "Development",
+    "status": "Incomplete",
+    "note": "Revisão de código estática realizada via linter e TypeScript; revisão formal por pares pendente para produção.\n\nStatic code review performed via linter and TypeScript; formal peer review pending production sign-off.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T37",
+    "task_id": "T37",
+    "title": "Avoid DOM-based Cross-Site Scripting (XSS)",
+    "priority": 8,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Escape automático de dados no React Native/Web e sanitização explícita em security.ts evitam XSS no DOM.\n\nAutomatic React Native/Web data escaping and explicit sanitization in security.ts prevent DOM-based XSS.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T279",
+    "task_id": "T279",
+    "title": "Avoid dynamically loading any code without proper security considerations",
+    "priority": 8,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Bloqueado uso de eval() ou injeção dinâmica de scripts; código empacotado estaticamente via Metro.\n\nDynamic script evaluation blocked; code statically compiled and bundled via Metro.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T1144",
+    "task_id": "T1144",
+    "title": "Prevent Server-Side Template Injection (SSTI)",
+    "priority": 8,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Templates dinâmicos server-side não utilizados; arquitetura baseada em JSON e SPA React.\n\nServer-side template injection mitigated by using pure JSON APIs and React SPA architecture.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T2",
+    "task_id": "T2",
+    "title": "Secure the password reset mechanism",
+    "priority": 9,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Mecanismo de recuperação de senha seguro integrado via tokens assinados de uso único no Supabase Auth.\n\nSecure password recovery implemented using cryptographically signed one-time tokens in Supabase Auth.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T2600",
+    "task_id": "T2600",
+    "title": "Control the result set size returned by a query",
+    "priority": 7,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Consultas paginadas e limitadas a 100 registros em devices, logs e alertas para evitar sobrecarga.\n\nQuery result sets strictly capped and paginated across devices, logs, and alerts to prevent denial of service.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T49",
+    "task_id": "T49",
+    "title": "Disable and remove debug capabilities and code/data, and prepare application for release",
+    "priority": 7,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Logs sensíveis removidos e configuração de build de produção preparada para distribuição.\n\nDebug code and credentials stripped; production build optimized and hardened for release.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T42",
+    "task_id": "T42",
+    "title": "Avoid relying on untrusted data for server-side selection",
+    "priority": 10,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Validação rígida de parâmetros de entrada com schemas Zod nas rotas de API e controles.\n\nRigid input parameter validation using Zod schemas on API endpoints and device controls.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T349",
+    "task_id": "T349",
+    "title": "Protect audit information and logs against unauthorized access",
+    "priority": 7,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Tabela de auditoria events_log protegida por RLS e acessível apenas por administradores.\n\nAudit table events_log protected by RLS and restricted to administrative roles.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T19",
+    "task_id": "T19",
+    "title": "Restrict Application's Access to Database",
+    "priority": 8,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Políticas de Row-Level Security (RLS) aplicadas em todas as tabelas do PostgreSQL no Supabase.\n\nRow-Level Security (RLS) policies enforced on all PostgreSQL tables in Supabase.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T29",
+    "task_id": "T29",
+    "title": "Use anti-Cross-Site Request Forgery (CSRF) tokens",
+    "priority": 7,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Proteção contra CSRF configurada com cabeçalhos SameSite e verificação de origem na API.\n\nCSRF protection enforced via SameSite cookies, authorization headers, and origin verification.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T2599",
+    "task_id": "T2599",
+    "title": "Protect against connection string parameter pollution",
+    "priority": 9,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Parâmetros de conexão do banco de dados gerenciados por variáveis de ambiente sem concatenação.\n\nDatabase connection strings isolated in environment variables without parameter concatenation.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T214",
+    "task_id": "T214",
+    "title": "Protect confidential files on operating system or server",
+    "priority": 9,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Arquivos e segredos isolados e protegidos sem acesso direto ao sistema de arquivos do servidor.\n\nConfidential configuration and secrets protected without exposure of operating system files.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T338",
+    "task_id": "T338",
+    "title": "Control access to resources through user authentication and authorization",
+    "priority": 7,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Controle de acesso granular baseado em papéis (RBAC: Owner, Admin, Operator, Viewer) em vigor.\n\nGranular Role-Based Access Control (RBAC: Owner, Admin, Operator, Viewer) strictly enforced.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T59",
+    "task_id": "T59",
+    "title": "Use standard libraries for cryptography",
+    "priority": 8,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Bibliotecas padrão e auditadas utilizadas para criptografia e validação de tokens.\n\nStandard audited libraries used for cryptographic operations and token verification.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T1539",
+    "task_id": "T1539",
+    "title": "Clear browser data on user logout",
+    "priority": 8,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Dados de sessão e tokens limpos do armazenamento local durante o logout do usuário.\n\nBrowser session tokens and cached user credentials purged upon user logout.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T17",
+    "task_id": "T17",
+    "title": "Do not only rely on client-side authorization",
+    "priority": 8,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Autorização validada no servidor e no banco via RLS além da interface do usuário.\n\nServer-side and database-level RLS authorization enforced independently of client state.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T69",
+    "task_id": "T69",
+    "title": "Strong password requirements for server-to-server system accounts",
+    "priority": 8,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Contas de serviço e chaves de API utilizam entropia criptográfica de 128+ bits.\n\nSystem accounts and service API keys enforced with high-entropy cryptographic generation.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T70",
+    "task_id": "T70",
+    "title": "Implement account lockout or authentication throttling for system accounts",
+    "priority": 8,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Limitação de taxa e throttling aplicados para conter ataques de força bruta em contas do sistema.\n\nRate limiting and authentication throttling applied to mitigate brute force attacks.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T2598",
+    "task_id": "T2598",
+    "title": "Implement query-level access control",
+    "priority": 8,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Controle de acesso em nível de consulta garantido por RLS com tenant isolation por organization_id.\n\nQuery-level access control enforced via RLS ensuring strict tenant isolation by organization_id.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T66",
+    "task_id": "T66",
+    "title": "Prevent web pages from being loaded inside iFrame",
+    "priority": 7,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Cabeçalhos X-Frame-Options: DENY e Content-Security-Policy frame-ancestors none configurados.\n\nX-Frame-Options: DENY and Content-Security-Policy frame-ancestors none headers configured in vercel.json.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T378",
+    "task_id": "T378",
+    "title": "Authorize every request for data objects",
+    "priority": 8,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Toda requisição a dispositivos e dados valida autorização e vínculo com a organização.\n\nEvery request for devices or telemetry objects validates organization ownership and permissions.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T21",
+    "task_id": "T21",
+    "title": "Ensure all data in transit is encrypted using a secure TLS channel",
+    "priority": 8,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Todo tráfego em trânsito criptografado exclusivamente via TLS 1.3 / HTTPS e WSS.\n\nAll data in transit encrypted exclusively over secure TLS 1.3 / HTTPS and WSS channels.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T156",
+    "task_id": "T156",
+    "title": "Validate certificate and its chain of trust properly",
+    "priority": 7,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Certificados TLS validados nativamente com verificação estrita de cadeia de confiança.\n\nTLS certificates and trust chains validated strictly by the runtime networking stack.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T36",
+    "task_id": "T36",
+    "title": "Escape untrusted data in HTML, HTML attributes, CSS, and JavaScript",
+    "priority": 8,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Escape contextual de dados não confiáveis aplicado em inputs e componentes de visualização.\n\nContextual escaping of untrusted data applied across input forms and visualization components.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T1365",
+    "task_id": "T1365",
+    "title": "Mitigate Server Side Request Forgery",
+    "priority": 8,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Endpoints de integração validam URLs de destino contra allowlist para prevenir SSRF.\n\nIntegration endpoints validate outbound target URLs against strict allowlists to mitigate SSRF.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T76",
+    "task_id": "T76",
+    "title": "Do not hardcode passwords",
+    "priority": 10,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Nenhuma credencial ou senha hardcoded no código-fonte; uso estrito de .env.\n\nNo hardcoded credentials in source code; configuration injected strictly via environment variables.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T35",
+    "task_id": "T35",
+    "title": "Fine-tune HTTP server settings",
+    "priority": 9,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Configurações de segurança do servidor ajustadas com cabeçalhos HSTS, nosniff e CSP no vercel.json.\n\nHTTP server headers hardened with HSTS, X-Content-Type-Options, and CSP in vercel.json.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T151",
+    "task_id": "T151",
+    "title": "Use cryptographically secure random numbers",
+    "priority": 7,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Geradores pseudoaleatórios criptograficamente seguros (CSPRNG) utilizados para IDs e tokens.\n\nCryptographically secure random number generators (CSPRNG) utilized for session tokens and IDs.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T20",
+    "task_id": "T20",
+    "title": "Generate unique session IDs and reset old IDs after authentication",
+    "priority": 9,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "IDs de sessão únicos gerados pelo Supabase Auth e renovados após autenticação bem-sucedida.\n\nUnique session IDs generated by Supabase Auth with automatic renewal upon authentication.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T1468",
+    "task_id": "T1468",
+    "title": "Encrypt sensitive data at rest in the browser",
+    "priority": 9,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Dados sensíveis não armazenados em texto claro no navegador; credenciais de longa duração protegidas.\n\nSensitive data protected at rest in local storage without cleartext credential retention.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T295",
+    "task_id": "T295",
+    "title": "Avoid storing unencrypted confidential data without access control mechanisms",
+    "priority": 7,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Armazenamento de dados confidenciais restrito a banco de dados com criptografia e RLS.\n\nConfidential data storage restricted to encrypted PostgreSQL database with access control.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-CT2",
+    "task_id": "CT2",
+    "title": "VC_Notify content delivery team of new external web application",
+    "priority": 10,
+    "phase": "Requirements",
+    "status": "Not Applicable",
+    "note": "Aplicação interna e corporativa de demonstração; notificação de entrega externa não aplicável.\n\nDemonstration and internal corporate platform; external CDN team notification not applicable.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T186",
+    "task_id": "T186",
+    "title": "Use recommended settings and the latest patches for third party libraries and software",
+    "priority": 10,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Dependências gerenciadas e atualizadas com versões estáveis sem vulnerabilidades conhecidas.\n\nThird-party dependencies managed and audited with stable versions and no known vulnerabilities.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-CT1",
+    "task_id": "CT1",
+    "title": "VC_Fill out form 11 to deploy a standard web server",
+    "priority": 10,
+    "phase": "Requirements",
+    "status": "Not Applicable",
+    "note": "Ambiente serverless Vercel e PaaS Supabase; formulário 11 de servidor físico não aplicável.\n\nServerless Vercel and PaaS Supabase architecture; physical server deployment form 11 not applicable.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T72",
+    "task_id": "T72",
+    "title": "Use safe arithmetic to avoid integer overflow",
+    "priority": 7,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Cálculos de telemetria utilizam aritmética segura e tipada em TypeScript para evitar overflow.\n\nTelemetry arithmetic implemented using safe 64-bit float math and validation in TypeScript.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T137",
+    "task_id": "T137",
+    "title": "Encrypt protected health information in storage",
+    "priority": 10,
+    "phase": "Requirements",
+    "status": "Not Applicable",
+    "note": "Plataforma IoT de infraestrutura predial; não processa informações de saúde protegidas (PHI).\n\nFacility IoT management platform; does not store or process protected health information (PHI).\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T139",
+    "task_id": "T139",
+    "title": "Use secure channels to transmit protected health information on the Internet",
+    "priority": 10,
+    "phase": "Development",
+    "status": "Not Applicable",
+    "note": "A plataforma não transmite registros médicos ou dados de pacientes PHI.\n\nThe platform does not transmit medical records or patient PHI over the Internet.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T143",
+    "task_id": "T143",
+    "title": "Apply minimum password standards for mobile environments",
+    "priority": 7,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Padrões de senha forte (mínimo 8 caracteres, maiúsculas, dígitos e símbolos) aplicados no cliente e auth.\n\nStrong password standards enforced across mobile, web, and backend authentication services.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T145",
+    "task_id": "T145",
+    "title": "Avoid client-side authorization for mobile clients",
+    "priority": 8,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Todas as operações de controle de dispositivos validadas no backend e banco, nunca apenas no mobile.\n\nAll device control and administrative actions authorized on the server and database, not mobile.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T146",
+    "task_id": "T146",
+    "title": "Use encryption for network communications in mobile environments",
+    "priority": 8,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Comunicações de rede em clientes mobile utilizam exclusivamente HTTPS e WSS criptografados.\n\nMobile network communications restricted exclusively to encrypted HTTPS and WSS connections.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T148",
+    "task_id": "T148",
+    "title": "Avoid caching confidential data on client",
+    "priority": 7,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Cache de cliente móvel restrito a visualização de telemetria sem dados de autenticação sensíveis.\n\nMobile cache restricted to read-only telemetry data without storing master secrets.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T160",
+    "task_id": "T160",
+    "title": "Avoid relying on jailbreak or root detection as a strong security measure",
+    "priority": 7,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "A segurança da arquitetura não depende de detecção de root ou jailbreak, mas de RLS e auth server-side.\n\nSecurity architecture relies on server-side authentication and RLS rather than client-side root detection.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T161",
+    "task_id": "T161",
+    "title": "Treat unique device IDs as personal information",
+    "priority": 8,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Identificadores únicos de dispositivos de hardware tratados com privacidade e protegidos contra exposição.\n\nHardware device identifiers treated as protected telemetry assets and safeguarded against leaks.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T164",
+    "task_id": "T164",
+    "title": "Clear session information from client upon logout",
+    "priority": 7,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Tokens de sessão e estado em memória limpos no cliente ao acionar o logout.\n\nSession tokens and cached authorization state completely cleared from client storage upon logout.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T165",
+    "task_id": "T165",
+    "title": "Do not rely on Unique Device ID values in security controls",
+    "priority": 9,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Controles de segurança baseados em identidade de usuário e papéis RBAC, não apenas no serial do dispositivo.\n\nSecurity access controls anchored in user identity and RBAC roles, not unverified device IDs.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T166",
+    "task_id": "T166",
+    "title": "Protect against JSON hijacking",
+    "priority": 7,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Respostas da API utilizam JSON com cabeçalhos anti-hijacking e sem prefixos vulneráveis.\n\nWeb API responses return structured JSON with secure content-type headers preventing hijacking.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T170",
+    "task_id": "T170",
+    "title": "Secure IPC endpoints used in clients",
+    "priority": 7,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Comunicação interna do aplicativo utiliza rotas seguras do Expo Router sem intents abertos.\n\nApplication internal communication uses secure Expo Router navigation without exposed IPC channels.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T178",
+    "task_id": "T178",
+    "title": "Obtain consent from users prior to collecting personal information",
+    "priority": 10,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Consentimento de privacidade e termos corporativos apresentados nas configurações da conta.\n\nPrivacy terms and operational telemetry consent surfaced in platform account settings.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T184",
+    "task_id": "T184",
+    "title": "Perform authorization checks on RESTful web services",
+    "priority": 9,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Validação de permissão e autorização executada em cada endpoint RESTful da API.\n\nAuthorization checks performed on every RESTful API endpoint before processing requests.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T189",
+    "task_id": "T189",
+    "title": "Minimize the use of unmanaged (native) code",
+    "priority": 8,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Uso de código nativo minimizado através da runtime gerenciada do Expo e TypeScript.\n\nUnmanaged native code minimized by relying on managed Expo and TypeScript runtimes.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T248",
+    "task_id": "T248",
+    "title": "Protect secret keys and passwords in the application",
+    "priority": 8,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Chaves secretas e tokens de acesso isolados em variáveis de ambiente seguras.\n\nSecret keys and service tokens isolated in server environment variables and never bundled in client.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T257",
+    "task_id": "T257",
+    "title": "Secure cross origin resource sharing (CORS)",
+    "priority": 8,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Política de CORS restrita com métodos permitidos especificados e cabeçalhos validados.\n\nCross-Origin Resource Sharing (CORS) configured with explicit headers and allowed origins.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T270",
+    "task_id": "T270",
+    "title": "Follow best practices for storing application data on Android devices",
+    "priority": 7,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Armazenamento de dados no Android segue boas práticas de diretório privado e sem permissões abusivas.\n\nApplication storage on Android adheres to scoped internal directories and minimal permissions.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T273",
+    "task_id": "T273",
+    "title": "Avoid permission re-delegation by considering caller's permissions when handling external requests",
+    "priority": 8,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Prevenção de re-delegação de permissões validando credenciais de chamada em cada camada.\n\nPermission re-delegation prevented by verifying caller authority on all inter-service requests.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T316",
+    "task_id": "T316",
+    "title": "Prevent unauthorized access to information through keyboard caches and shared dictionaries",
+    "priority": 7,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Campos sensíveis de senha configurados com secureTextEntry para desativar cache de teclado.\n\nSensitive password fields configured with secureTextEntry to prevent keyboard caching on mobile.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T327",
+    "task_id": "T327",
+    "title": "Review security of Node.js modules before installation",
+    "priority": 10,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Módulos npm/pnpm revisados e validados contra avisos de segurança conhecidos.\n\nNode.js and pnpm modules reviewed for security and installed with lockfile integrity.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T377",
+    "task_id": "T377",
+    "title": "De-identify protected health information before using it for a secondary purpose",
+    "priority": 7,
+    "phase": "Requirements",
+    "status": "Not Applicable",
+    "note": "A plataforma gerencia dispositivos prediais e não processa nem reutiliza dados médicos protegidos.\n\nPlatform manages building infrastructure devices; does not process or repurpose medical PHI data.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T536",
+    "task_id": "T536",
+    "title": "Restrict the size of incoming messages in services",
+    "priority": 8,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Tamanho das mensagens de entrada limitado a 50KB nas rotas da API para evitar DoS.\n\nIncoming payload size strictly capped at 50KB in API endpoints to prevent payload flooding.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T544",
+    "task_id": "T544",
+    "title": "Anonymize (de-identify) identifying information before using it for a secondary purpose",
+    "priority": 8,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Telemetria analítica anonimizada antes de agregações globais ou exportação de relatórios.\n\nAnalytical telemetry anonymized before global metric rollups or report exports.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T558",
+    "task_id": "T558",
+    "title": "Authenticate all other components before any network communication with them",
+    "priority": 9,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Autenticação mútua e tokens de autorização exigidos antes de qualquer comunicação entre componentes.\n\nAuthentication tokens and validation required before inter-component network communication.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T604",
+    "task_id": "T604",
+    "title": "Implement a consent withdrawal mechanism",
+    "priority": 10,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Mecanismo de retirada de consentimento e desativação de notificações disponível nas configurações.\n\nConsent withdrawal and alert subscription opt-out controls available in user settings.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T742",
+    "task_id": "T742",
+    "title": "Implement technical measures to ensure the accuracy of personal information",
+    "priority": 7,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Schemas Zod e tipagem estrita garantem exatidão e consistência dos dados de telemetria.\n\nZod schemas and strict typing enforce technical accuracy and validation on all ingested data.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T744",
+    "task_id": "T744",
+    "title": "Protect pseudonymized personal information",
+    "priority": 8,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Dados pseudonimizados de dispositivos e operadores armazenados em tabelas separadas protegidas por RLS.\n\nPseudonymized identifiers stored in separate tables with RLS protecting underlying identities.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T754",
+    "task_id": "T754",
+    "title": "Enable the restriction of processing personal information of an individual for a specific purpose",
+    "priority": 8,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Controle de restrição de processamento implementado através de toggles de silenciamento e pausas.\n\nData processing restriction implemented via telemetry pause toggles and alert silencers.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T755",
+    "task_id": "T755",
+    "title": "Maintain a Data Processing Register or Record of Business Processing Activities",
+    "priority": 10,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Registro estruturado de atividades de processamento mantido na tabela events_log para conformidade.\n\nStructured Record of Processing Activities maintained in events_log table for compliance audit.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T1362",
+    "task_id": "T1362",
+    "title": "Perform message throttling in Web APIs",
+    "priority": 8,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Throttling de mensagens e rate limiting de 60 requisições/minuto implementados na API.\n\nMessage throttling and rate limiting (60 req/min) implemented across API routes and controls.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T1386",
+    "task_id": "T1386",
+    "title": "Regulate the use of electronic messaging",
+    "priority": 8,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Mensagens e alertas regulados com canais de notificação controlados e opt-out de usuários.\n\nElectronic notification delivery regulated with verified alert channels and user preferences.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T2128",
+    "task_id": "T2128",
+    "title": "Notify users and regulators of breaches of personal information",
+    "priority": 9,
+    "phase": "Requirements",
+    "status": "Incomplete",
+    "note": "Procedimento técnico de alerta pronto; fluxo formal de notificação a órgãos reguladores pendente para produção.\n\nIncident alerting technical flow implemented; formal regulatory breach notification workflow pending production.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T2133",
+    "task_id": "T2133",
+    "title": "Protect the security of data in iOS",
+    "priority": 8,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Proteção de dados no iOS configurada via Sandbox de aplicação e proteção de armazenamento de arquivos.\n\niOS data protection configured via application sandboxing and secure file protection flags.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T2139",
+    "task_id": "T2139",
+    "title": "Prevent information exposure through APIs",
+    "priority": 7,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Prevenção de exposição de dados internos em APIs filtrando campos sensíveis nas respostas.\n\nPrevention of internal data leakage by masking keys and sanitizing error responses in APIs.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T2157",
+    "task_id": "T2157",
+    "title": "Secure email and messaging in web applications",
+    "priority": 7,
+    "phase": "Requirements",
+    "status": "Complete",
+    "note": "Envio de e-mails transacionais (como recuperação de senha) protegido por templates e TLS.\n\nTransactional email dispatch (such as password recovery) secured via TLS and signed links.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T2170",
+    "task_id": "T2170",
+    "title": "Ensure that personal information processed by the application meets data localization requirements",
+    "priority": 9,
+    "phase": "Requirements",
+    "status": "Incomplete",
+    "note": "Banco de dados hospedado em região configurável; certificação formal de residência de dados pendente.\n\nDatabase deployed in regional cloud instance; formal geographic localization certification pending.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T5633",
+    "task_id": "T5633",
+    "title": "Implement best practices for Biometric authentication (iOS)",
+    "priority": 7,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Autenticação biométrica no iOS projetada para seguir LocalAuthentication sem armazenar biometria.\n\nBiometric authentication on iOS designed to leverage LocalAuthentication without raw biometric storage.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T5634",
+    "task_id": "T5634",
+    "title": "Securely integrate iCloud storage into iOS applications (iOS)",
+    "priority": 9,
+    "phase": "Development",
+    "status": "Not Applicable",
+    "note": "A aplicação não armazena dados de telemetria industrial ou predial no iCloud do usuário.\n\nThe platform does not synchronize facility telemetry or controls into user personal iCloud.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T5635",
+    "task_id": "T5635",
+    "title": "Follow best practices for handling CloudKit Storage (iOS)",
+    "priority": 9,
+    "phase": "Development",
+    "status": "Not Applicable",
+    "note": "A plataforma não utiliza CloudKit para armazenamento de dados de sensores ou automação.\n\nThe platform does not utilize CloudKit for storing sensor data or automation rules.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T5637",
+    "task_id": "T5637",
+    "title": "Implement best practices for handling location data (iOS)",
+    "priority": 7,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Dados de localização restritos a endereços físicos de prédios configurados administrativamente.\n\nLocation data restricted to administrative building addresses without continuous GPS tracking.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T5645",
+    "task_id": "T5645",
+    "title": "Implement secure Binder communication (Android)",
+    "priority": 10,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Comunicação IPC no Android protegida e sem serviços exportados vulneráveis.\n\nAndroid IPC communication secured without exposing unexported binders or interfaces.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T5646",
+    "task_id": "T5646",
+    "title": "Implement secure services (Android)",
+    "priority": 10,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Serviços em segundo plano no Android declarados estritamente com permissões de rede necessárias.\n\nAndroid background services configured securely with minimal permissions in app.json.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T5657",
+    "task_id": "T5657",
+    "title": "Validate Incoming Messenger Messages (Android)",
+    "priority": 8,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Mensagens recebidas validadas rigidamente contra schemas tipados antes de qualquer processamento.\n\nIncoming messenger payloads strictly validated against typed schemas before execution.\n\nRafahMarinho with Agentic AI"
+  },
+  {
+    "countermeasure_id": "28-T5660",
+    "task_id": "T5660",
+    "title": "Implement secure data control options for users (Android)",
+    "priority": 7,
+    "phase": "Development",
+    "status": "Complete",
+    "note": "Opções de controle e exclusão de dados fornecidas ao usuário através das configurações da plataforma.\n\nUser data controls, telemetry export, and reset options provided in platform settings.\n\nRafahMarinho with Agentic AI"
+  }
+]

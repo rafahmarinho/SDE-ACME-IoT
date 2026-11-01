@@ -10,7 +10,7 @@ import {
   FirmwareRollout,
 } from '../types';
 import { AppStorage } from './storage';
-import { logAuditEvent } from './security';
+import { logAuditEvent, hasPermission, generateRecordId, isSha256Hex, Permission } from './security';
 
 type SimulationListener = () => void;
 const listeners = new Set<SimulationListener>();
@@ -22,6 +22,17 @@ export function subscribeToSimulation(listener: SimulationListener): () => void 
   };
 }
 
+// SDE T15, T145: domain actions go through the central RBAC check with the session user
+// (null when signed out, which denies everything).
+function authorize(permission: Permission): { ok: true } | { ok: false; error: string } {
+  const user = AppStorage.getSessionUser();
+  if (!user) return { ok: false, error: 'Sign in required.' };
+  if (!hasPermission(user.role, permission)) {
+    return { ok: false, error: `Your role (${user.role}) is not allowed to perform this action.` };
+  }
+  return { ok: true };
+}
+
 function notifyListeners(): void {
   listeners.forEach((fn) => {
     try {
@@ -31,6 +42,10 @@ function notifyListeners(): void {
     }
   });
 }
+
+// Screens subscribe once (subscribeToSimulation) and re-render whenever data changes, whether the
+// change came from the local simulation or from a server refresh.
+export const notifyDataChanged = notifyListeners;
 
 export class SimulationEngine {
   private static timer: any = null;
@@ -62,10 +77,13 @@ export class SimulationEngine {
     return this.isRunning;
   }
 
-  static setScenario(scenario: SimulationScenario): void {
+  static setScenario(scenario: SimulationScenario): { success: boolean; error?: string } {
+    const auth = authorize('simulation:advance');
+    if (!auth.ok) return { success: false, error: auth.error };
     AppStorage.setScenario(scenario);
     logAuditEvent('scenario_changed', { scenario });
     this.advanceTick(true);
+    return { success: true };
   }
 
   // Advance simulation by 1 tick
@@ -251,7 +269,7 @@ export class SimulationEngine {
     if (existing) return;
 
     const newAlert: Alert = {
-      id: 'al_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      id: generateRecordId('al_'),
       organizationId: device.organizationId,
       deviceId: device.id,
       severity,
@@ -300,20 +318,58 @@ export class SimulationEngine {
     }
   }
 
-  // Trigger manual OTA Rollback simulation
-  static rollbackRollout(rolloutId: string): void {
+  // Start a staged OTA rollout (firmware administrators only).
+  static startRollout(firmwareId: string): { success: boolean; rollout?: FirmwareRollout; error?: string } {
+    const auth = authorize('firmware:manage');
+    if (!auth.ok) return { success: false, error: auth.error };
+
+    const pkg = AppStorage.getFirmwarePackages().find((p) => p.id === firmwareId);
+    if (!pkg) return { success: false, error: 'Firmware package not found' };
+    if (pkg.status === 'deprecated') return { success: false, error: 'Deprecated firmware cannot be rolled out.' };
+    // SDE T59/T60: devices verify the downloaded image against this digest with verifyChecksum().
+    if (!isSha256Hex(pkg.checksumSha256)) {
+      return { success: false, error: 'Firmware package has no valid SHA-256 checksum.' };
+    }
+
+    const orgId = AppStorage.getActiveOrgId();
+    const targetDevs = AppStorage.getDevices().filter((d) => d.type === pkg.deviceType && d.organizationId === orgId);
+    const rollout: FirmwareRollout = {
+      id: generateRecordId('ro_'),
+      firmwareId: pkg.id,
+      targetType: pkg.deviceType,
+      totalDevices: targetDevs.length,
+      updatedDevices: 0,
+      failedDevices: 0,
+      status: 'in_progress',
+      progressPercent: 10,
+      createdAt: new Date().toISOString(),
+    };
+    AppStorage.setFirmwareRollouts([rollout, ...AppStorage.getFirmwareRollouts()]);
+    logAuditEvent('firmware_rollout_started', { rolloutId: rollout.id, firmwareId: pkg.id, version: pkg.version });
+
+    notifyListeners();
+    return { success: true, rollout };
+  }
+
+  // Trigger manual OTA Rollback simulation (firmware administrators only)
+  static rollbackRollout(rolloutId: string): { success: boolean; error?: string } {
+    const auth = authorize('firmware:manage');
+    if (!auth.ok) return { success: false, error: auth.error };
+
     const rollouts = AppStorage.getFirmwareRollouts();
     const target = rollouts.find((r) => r.id === rolloutId);
-    if (!target) return;
+    if (!target) return { success: false, error: 'Rollout not found' };
 
     target.status = 'rolled_back';
     target.progressPercent = 0;
     AppStorage.setFirmwareRollouts(rollouts);
 
+    const actor = AppStorage.getSessionUser();
     AppStorage.addEvent({
       organizationId: AppStorage.getActiveOrgId(),
       eventType: 'firmware_updated',
-      actorRole: 'administrator',
+      actorId: actor?.id,
+      actorRole: actor?.role,
       payload: {
         action: 'rollback_firmware',
         rolloutId,
@@ -322,26 +378,33 @@ export class SimulationEngine {
     });
 
     notifyListeners();
+    return { success: true };
   }
 
   // Device control: update desired state (requires online connection)
   static updateDesiredState(deviceId: string, updates: Partial<Device['desiredState']>): { success: boolean; error?: string } {
+    const auth = authorize('devices:control');
+    if (!auth.ok) return { success: false, error: auth.error };
+
     if (AppStorage.isOfflineMode()) {
       return { success: false, error: 'Cannot control device while in offline mode. Please reconnect.' };
     }
 
     const devices = AppStorage.getDevices();
     const dev = devices.find((d) => d.id === deviceId);
-    if (!dev) return { success: false, error: 'Device not found' };
+    // SDE T378: the device must belong to the session's organization.
+    if (!dev || dev.organizationId !== AppStorage.getActiveOrgId()) return { success: false, error: 'Device not found' };
 
     dev.desiredState = { ...dev.desiredState, ...updates };
     AppStorage.setDevices(devices);
 
+    const actor = AppStorage.getSessionUser();
     AppStorage.addEvent({
       organizationId: dev.organizationId,
       deviceId: dev.id,
       eventType: 'state_change',
-      actorRole: AppStorage.getCurrentUser().role,
+      actorId: actor?.id,
+      actorRole: actor?.role,
       payload: updates,
     });
 
@@ -358,14 +421,23 @@ export class SimulationEngine {
     roomId: string;
     organizationId: string;
   }): { success: boolean; device?: Device; error?: string } {
+    const auth = authorize('devices:admin');
+    if (!auth.ok) return { success: false, error: auth.error };
+
+    // SDE T18, T378: the tenant comes from the session, never from the submitted form.
+    const organizationId = AppStorage.getActiveOrgId();
+    if (data.organizationId && data.organizationId !== organizationId) {
+      return { success: false, error: 'Devices can only be enrolled in your own organization.' };
+    }
+
     const devices = AppStorage.getDevices();
     if (devices.some((d) => d.code.toLowerCase() === data.code.toLowerCase())) {
       return { success: false, error: `Device code '${data.code}' is already enrolled.` };
     }
 
     const newDevice: Device = {
-      id: 'd_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8),
-      organizationId: data.organizationId,
+      id: generateRecordId('d_'),
+      organizationId,
       buildingId: data.buildingId,
       roomId: data.roomId,
       name: data.name,
@@ -384,11 +456,13 @@ export class SimulationEngine {
     devices.push(newDevice);
     AppStorage.setDevices(devices);
 
+    const actor = AppStorage.getSessionUser();
     AppStorage.addEvent({
-      organizationId: data.organizationId,
+      organizationId,
       deviceId: newDevice.id,
       eventType: 'enrollment',
-      actorRole: AppStorage.getCurrentUser().role,
+      actorId: actor?.id,
+      actorRole: actor?.role,
       payload: { code: newDevice.code, name: newDevice.name, type: newDevice.type },
     });
 

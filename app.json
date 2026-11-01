@@ -15,11 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.acme.iot.platform",
-      "infoPlist": {
-        "NSCameraUsageDescription": "ACME IoT requires camera access to scan device QR codes for enrollment.",
-        "NSBluetoothAlwaysUsageDescription": "ACME IoT uses Bluetooth to discover nearby IoT sensors and smart devices."
-      }
+      "bundleIdentifier": "com.acme.iot.platform"
     },
     "android": {
       "adaptiveIcon": {
@@ -29,7 +25,6 @@
       "package": "com.acme.iot.platform",
       "permissions": [
         "android.permission.INTERNET",
-        "android.permission.CAMERA",
         "android.permission.ACCESS_NETWORK_STATE"
       ]
     },

@@ -8,6 +8,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { getPublicReference } from '../../src/services/security';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppStorage } from '../../src/services/storage';
 import { subscribeToSimulation } from '../../src/services/simulation';
@@ -141,7 +142,7 @@ export default function DashboardScreen() {
         onSelectDevice={(d) => {
           router.push({
             pathname: '/(app)/device-detail',
-            params: { id: d.id },
+            params: { ref: getPublicReference(d.id) },
           } as any);
         }}
       />
@@ -164,7 +165,7 @@ export default function DashboardScreen() {
               onPress={() => {
                 router.push({
                   pathname: '/(app)/device-detail',
-                  params: { id: dev.id },
+                  params: { ref: getPublicReference(dev.id) },
                 } as any);
               }}
               onRefresh={loadData}

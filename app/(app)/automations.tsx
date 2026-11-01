@@ -11,7 +11,10 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppStorage } from '../../src/services/storage';
+import { sessionHasPermission } from '../../src/services/security';
 import { subscribeToSimulation } from '../../src/services/simulation';
+import { DataGateway } from '../../src/services/dataGateway';
+import { ActionError } from '../../src/components/ActionError';
 import { Automation, Device } from '../../src/types';
 
 export default function AutomationsScreen() {
@@ -19,6 +22,7 @@ export default function AutomationsScreen() {
   const [automations, setAutomations] = useState<Automation[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // New Rule Form
   const [ruleName, setRuleName] = useState('');
@@ -51,25 +55,19 @@ export default function AutomationsScreen() {
     });
   }, []);
 
-  const handleToggleRule = (id: string, currentVal: boolean) => {
-    const all = AppStorage.getAutomations();
-    const target = all.find((a) => a.id === id);
-    if (target) {
-      target.enabled = !currentVal;
-      AppStorage.setAutomations(all);
-      loadData();
-    }
+  // Role checks only hide pointless requests; the server authorizes every change (SDE T17).
+  const handleToggleRule = async (id: string, currentVal: boolean) => {
+    if (!sessionHasPermission('automations:write')) return;
+    const result = await DataGateway.setAutomationEnabled(id, !currentVal);
+    setActionError(result.success ? null : result.error);
+    loadData();
   };
 
-  const handleCreateRule = () => {
-    if (!ruleName.trim()) return;
+  const handleCreateRule = async () => {
+    if (!ruleName.trim() || !sessionHasPermission('automations:write')) return;
 
-    const newRule: Automation = {
-      id: 'a_' + Date.now(),
-      organizationId: activeOrgId,
+    const result = await DataGateway.createAutomation({
       name: ruleName.trim(),
-      enabled: true,
-      triggerType: actionCommand === 'set_target_temp' ? 'temperature_threshold' : 'power_threshold',
       triggerCondition: {
         deviceId: sourceDeviceId,
         metric: 'current_temp',
@@ -82,15 +80,12 @@ export default function AutomationsScreen() {
         value: actionCommand === 'set_target_temp' ? Number(actionVal) || 20 : actionVal,
       },
       intervalSeconds: parseInt(intervalSecs) || 60,
-      executionCount: 0,
-      notifyOnRun: true,
-      createdAt: new Date().toISOString(),
-    };
-
-    const current = AppStorage.getAutomations();
-    AppStorage.setAutomations([newRule, ...current]);
-    setModalVisible(false);
-    setRuleName('');
+    });
+    setActionError(result.success ? null : result.error);
+    if (result.success) {
+      setModalVisible(false);
+      setRuleName('');
+    }
     loadData();
   };
 
@@ -109,6 +104,8 @@ export default function AutomationsScreen() {
           <Text style={styles.createBtnText}>Create Automation Rule</Text>
         </TouchableOpacity>
       </View>
+
+      <ActionError message={actionError} />
 
       {/* Rules list */}
       <View style={styles.rulesList}>
@@ -319,6 +316,8 @@ export default function AutomationsScreen() {
                 keyboardType="numeric"
               />
             </View>
+
+            <ActionError message={actionError} />
 
             <TouchableOpacity style={styles.saveBtn} onPress={handleCreateRule}>
               <Text style={styles.saveBtnText}>Save and Activate Rule</Text>

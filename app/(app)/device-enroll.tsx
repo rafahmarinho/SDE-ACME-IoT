@@ -11,7 +11,7 @@ import {
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppStorage } from '../../src/services/storage';
-import { SimulationEngine } from '../../src/services/simulation';
+import { DataGateway } from '../../src/services/dataGateway';
 import { DeviceType } from '../../src/types';
 
 export default function DeviceEnrollScreen() {
@@ -63,7 +63,7 @@ export default function DeviceEnrollScreen() {
     }, 700);
   };
 
-  const handleEnroll = () => {
+  const handleEnroll = async () => {
     setError(null);
     setSuccess(null);
 
@@ -80,7 +80,9 @@ export default function DeviceEnrollScreen() {
       return;
     }
 
-    const res = SimulationEngine.enrollDevice({
+    // In server mode the API checks the role, the tenant (from the token) and that the building and
+    // room belong to it before the device is created.
+    const res = await DataGateway.enrollDevice({
       name: name.trim(),
       code: code.trim(),
       type,

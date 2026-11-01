@@ -7,16 +7,20 @@ import {
   ScrollView,
   useWindowDimensions,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
-import { Slot, useRouter, usePathname } from 'expo-router';
+import { Slot, useRouter, usePathname, Redirect } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../../src/components/Header';
 import { ScenarioBar } from '../../src/components/ScenarioBar';
 import { OfflineNotice } from '../../src/components/OfflineNotice';
 import { AppStorage } from '../../src/services/storage';
+import { AuthService } from '../../src/services/supabase';
 import { UserProfile, UserRole } from '../../src/types';
-import { hasPermission } from '../../src/services/security';
-import { subscribeToSimulation } from '../../src/services/simulation';
+import { hasPermission, canAccessRoute } from '../../src/services/security';
+import { SimulationEngine, subscribeToSimulation } from '../../src/services/simulation';
+import { DataGateway } from '../../src/services/dataGateway';
+import { ActionError } from '../../src/components/ActionError';
 
 interface NavItem {
   id: string;
@@ -57,17 +61,69 @@ export default function AppLayout() {
   const router = useRouter();
   const pathname = usePathname();
   const { width } = useWindowDimensions();
-  const [user, setUser] = useState<UserProfile>(AppStorage.getCurrentUser());
+  const [user, setUser] = useState<UserProfile | null>(AppStorage.getSessionUser());
+  const [authChecked, setAuthChecked] = useState(false);
+  const [showLogoutReminder, setShowLogoutReminder] = useState(AppStorage.shouldShowLogoutReminder());
   const [isOffline, setIsOffline] = useState<boolean>(AppStorage.isOfflineMode());
   const [refreshKey, setRefreshKey] = useState(0);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const serverMode = DataGateway.isServerMode();
 
   const isDesktop = width >= 768;
+
+  // SDE T16, T338, T373: route guard. Every screen in this group requires a verified session;
+  // without one the user is sent to the public login page.
+  useEffect(() => {
+    let active = true;
+    AuthService.restoreSession().then((sessionUser) => {
+      if (!active) return;
+      setUser(sessionUser);
+      setAuthChecked(true);
+    });
+    const unsubscribe = AuthService.onSessionEnded(() => {
+      if (active) setUser(null);
+    });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
+
+  // SDE T26: data processes only run inside an authenticated session. In server mode the app polls the
+  // API (the source of truth); the local simulation exists only in demo builds (SDE T17, T145).
+  const sessionUserId = user?.id;
+  useEffect(() => {
+    if (!sessionUserId) return;
+    if (serverMode) {
+      DataGateway.startSync();
+      return () => {
+        DataGateway.stopSync();
+      };
+    }
+    SimulationEngine.start(3500);
+    return () => {
+      SimulationEngine.stop();
+    };
+  }, [sessionUserId, serverMode]);
 
   useEffect(() => {
     return subscribeToSimulation(() => {
       setIsOffline(AppStorage.isOfflineMode());
+      setSyncError(DataGateway.getLastSyncError());
     });
   }, []);
+
+  if (!authChecked) {
+    return (
+      <View style={styles.guardLoading}>
+        <ActivityIndicator size="large" color="#4f46e5" />
+      </View>
+    );
+  }
+
+  if (!user) {
+    return <Redirect href="/(auth)/login" />;
+  }
 
   const handleRoleChange = (newUser: UserProfile) => {
     setUser(newUser);
@@ -78,24 +134,48 @@ export default function AppLayout() {
     setRefreshKey((k) => k + 1);
   };
 
-  // Filter navigation items adapted to user's role
-  const visibleNavItems = NAV_ITEMS.filter((item) => {
-    if (item.requiredPermission) {
-      return hasPermission(user.role, item.requiredPermission);
-    }
-    return true;
-  });
+  // SDE T16: navigation and page access use the same central route map (deny by default).
+  // A page the role cannot open is never rendered; the user is sent to a page they can open.
+  if (!canAccessRoute(user.role, pathname)) {
+    return <Redirect href={canAccessRoute(user.role, '/dashboard') ? '/(app)/dashboard' : '/(app)/settings'} />;
+  }
+  const visibleNavItems = NAV_ITEMS.filter((item) => canAccessRoute(user.role, item.route.replace('/(app)', '')));
 
   return (
     <View style={styles.root}>
       {/* Top Header */}
       <Header onRoleChange={handleRoleChange} onOrgChange={handleOrgChange} />
 
-      {/* Scenario & Advance Simulation Controller */}
-      <ScenarioBar onReset={() => setRefreshKey((k) => k + 1)} />
+      {/* Scenario & Advance Simulation Controller (local demo only; server data is never simulated) */}
+      {!serverMode && <ScenarioBar onReset={() => setRefreshKey((k) => k + 1)} />}
 
       {/* Offline Banner when offline mode is enabled or network drops */}
       <OfflineNotice isOffline={isOffline} />
+
+      {/* Server refusals while loading data (for example a result set above the allowed size) */}
+      {syncError && (
+        <View style={styles.syncErrorWrap}>
+          <ActionError message={syncError} />
+        </View>
+      )}
+
+      {/* SDE T26: reminder when the previous session was never closed with an explicit logout */}
+      {showLogoutReminder && (
+        <View style={styles.reminderBanner}>
+          <MaterialCommunityIcons name="shield-alert-outline" size={16} color="#92400e" />
+          <Text style={styles.reminderText}>
+            Your previous session was not signed out. Use Sign Out in Settings when you finish, especially on shared devices.
+          </Text>
+          <TouchableOpacity
+            onPress={() => {
+              AppStorage.setLogoutReminder(false);
+              setShowLogoutReminder(false);
+            }}
+          >
+            <MaterialCommunityIcons name="close" size={16} color="#92400e" />
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Body Area with Responsive Sidebar and Content */}
       <View style={styles.body}>
@@ -164,6 +244,32 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#f8fafc',
+  },
+  guardLoading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+  },
+  reminderBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fef3c7',
+    borderBottomWidth: 1,
+    borderBottomColor: '#fde68a',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  reminderText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#92400e',
+    fontWeight: '600',
+  },
+  syncErrorWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
   body: {
     flex: 1,

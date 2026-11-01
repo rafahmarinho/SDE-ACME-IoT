@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { getPublicReference } from '../../src/services/security';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppStorage } from '../../src/services/storage';
 import { RoomVisualizer3D } from '../../src/components/RoomVisualizer3D';
@@ -93,7 +94,7 @@ export default function RoomsScreen() {
           onSelectDevice={(d) => {
             router.push({
               pathname: '/(app)/device-detail',
-              params: { id: d.id },
+              params: { ref: getPublicReference(d.id) },
             } as any);
           }}
         />

@@ -11,7 +11,10 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppStorage } from '../../src/services/storage';
-import { logAuditEvent } from '../../src/services/security';
+import { sessionHasPermission } from '../../src/services/security';
+import { subscribeToSimulation } from '../../src/services/simulation';
+import { DataGateway } from '../../src/services/dataGateway';
+import { ActionError } from '../../src/components/ActionError';
 import { Integration } from '../../src/types';
 
 export default function IntegrationsScreen() {
@@ -21,6 +24,7 @@ export default function IntegrationsScreen() {
   const [name, setName] = useState('');
   const [endpointUrl, setEndpointUrl] = useState('');
   const [type, setType] = useState<'webhook' | 'rest_api_key' | 'simulated_mqtt'>('webhook');
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const loadData = () => {
     const orgId = AppStorage.getActiveOrgId();
@@ -30,39 +34,33 @@ export default function IntegrationsScreen() {
 
   useEffect(() => {
     loadData();
+    return subscribeToSimulation(() => {
+      loadData();
+    });
   }, []);
 
-  const handleToggle = (id: string, current: boolean) => {
-    const all = AppStorage.getIntegrations();
-    const item = all.find((x) => x.id === id);
-    if (item) {
-      item.active = !current;
-      AppStorage.setIntegrations(all);
-      logAuditEvent('integration_toggled', { id, name: item.name, active: item.active });
-      loadData();
-    }
+  // Role checks only hide pointless requests; the server authorizes every change (SDE T17).
+  const handleToggle = async (id: string, current: boolean) => {
+    if (!sessionHasPermission('integrations:manage')) return;
+    const result = await DataGateway.setIntegrationActive(id, !current);
+    setActionError(result.success ? null : result.error);
+    loadData();
   };
 
-  const handleCreate = () => {
-    if (!name.trim()) return;
+  const handleCreate = async () => {
+    if (!name.trim() || !sessionHasPermission('integrations:manage')) return;
 
-    const newIntegration: Integration = {
-      id: 'i_' + Date.now(),
-      organizationId: activeOrgId,
+    const result = await DataGateway.createIntegration({
       name: name.trim(),
       type,
-      endpointUrl: endpointUrl.trim(),
-      apiKeyMasked: 'acme_live_••••••••••••' + Math.random().toString(36).substring(2, 6),
-      active: true,
-      createdAt: new Date().toISOString(),
-    };
-
-    const current = AppStorage.getIntegrations();
-    AppStorage.setIntegrations([newIntegration, ...current]);
-    logAuditEvent('integration_created', { name: newIntegration.name, type: newIntegration.type });
-    setModalVisible(false);
-    setName('');
-    setEndpointUrl('');
+      endpointUrl: endpointUrl.trim() || undefined,
+    });
+    setActionError(result.success ? null : result.error);
+    if (result.success) {
+      setModalVisible(false);
+      setName('');
+      setEndpointUrl('');
+    }
     loadData();
   };
 
@@ -81,6 +79,10 @@ export default function IntegrationsScreen() {
           <Text style={styles.addBtnText}>Add Connector</Text>
         </TouchableOpacity>
       </View>
+
+      <ActionError message={actionError} />
+      {/* SDE T338: the server only serves integrations to sessions verified with a second factor. */}
+      <ActionError message={DataGateway.isStepUpRequired() ? 'Two-step verification is required to view and manage integrations. Verify this session in Settings.' : null} />
 
       <View style={styles.list}>
         {integrations.map((item) => (
@@ -148,8 +150,14 @@ export default function IntegrationsScreen() {
                 placeholder="https://api.external-service.com/events"
                 value={endpointUrl}
                 onChangeText={setEndpointUrl}
+                keyboardType="url"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="off"
               />
             </View>
+
+            <ActionError message={actionError} />
 
             <TouchableOpacity style={styles.saveBtn} onPress={handleCreate}>
               <Text style={styles.saveBtnText}>Connect Integration</Text>

@@ -1,18 +1,11 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { SimulationEngine } from '../src/services/simulation';
 
+// The simulation engine is started by the authenticated (app) layout, so nothing runs or
+// writes to storage before a user signs in (SDE T26).
 export default function RootLayout() {
-  useEffect(() => {
-    // Start simulation engine ticker
-    SimulationEngine.start(3500);
-    return () => {
-      SimulationEngine.stop();
-    };
-  }, []);
-
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
@@ -20,6 +13,7 @@ export default function RootLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)/login" />
         <Stack.Screen name="(auth)/forgot-password" />
+        <Stack.Screen name="(auth)/reset-password" />
         <Stack.Screen name="(app)" />
       </Stack>
     </SafeAreaProvider>

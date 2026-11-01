@@ -83,8 +83,8 @@ INSERT INTO public.firmware_packages (id, version, device_type, checksum_sha256,
 ON CONFLICT (id) DO NOTHING;
 
 -- Initial Firmware Rollout
-INSERT INTO public.firmware_rollouts (id, firmware_id, target_type, total_devices, updated_devices, failed_devices, status, progress_percent) VALUES
-('ro000001-0000-0000-0000-000000000001', 'f0000001-0000-0000-0000-000000000001', 'thermostat', 4, 2, 0, 'in_progress', 50)
+INSERT INTO public.firmware_rollouts (id, organization_id, firmware_id, target_type, total_devices, updated_devices, failed_devices, status, progress_percent) VALUES
+('ro000001-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'f0000001-0000-0000-0000-000000000001', 'thermostat', 4, 2, 0, 'in_progress', 50)
 ON CONFLICT (id) DO NOTHING;
 
 -- Initial Integrations

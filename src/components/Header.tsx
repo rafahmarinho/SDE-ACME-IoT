@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppStorage } from '../services/storage';
+import { AuthService } from '../services/supabase';
+import { subscribeToSimulation } from '../services/simulation';
+import { isDemoModeEnabled } from '../config/runtime';
 import { UserRole, UserProfile } from '../types';
 import { INITIAL_USERS } from '../mock/initialData';
 
@@ -11,25 +14,39 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onOrgChange, onRoleChange }) => {
+  // SDE T14, T49, T338: persona and tenant switching are demo-only aids; real sessions are
+  // pinned to the signed-in user and their organization.
+  const demoMode = isDemoModeEnabled();
   const [currentUser, setCurrentUser] = useState<UserProfile>(AppStorage.getCurrentUser());
-  const [orgs] = useState(AppStorage.getOrganizations());
+  const [allOrgs, setAllOrgs] = useState(AppStorage.getOrganizations());
   const [activeOrgId, setActiveOrgId] = useState<string>(AppStorage.getActiveOrgId());
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showOrgModal, setShowOrgModal] = useState(false);
 
+  // In server mode the organization arrives with the first /api/data response.
+  useEffect(() => {
+    return subscribeToSimulation(() => {
+      setAllOrgs(AppStorage.getOrganizations());
+    });
+  }, []);
+
+  const orgs = demoMode ? allOrgs : allOrgs.filter((o) => o.id === currentUser.organizationId);
   const activeOrg = orgs.find((o) => o.id === activeOrgId) || orgs[0];
 
+  // Switching persona starts a brand-new session through AuthService (no in-place privilege change).
   const handleSelectRole = (user: UserProfile) => {
-    AppStorage.setCurrentUser(user);
-    setCurrentUser(user);
     setShowRoleModal(false);
-    if (onRoleChange) onRoleChange(user);
+    const result = AuthService.signInDemoPersona(user.email);
+    if (!result.user) return;
+    setCurrentUser(result.user);
+    setActiveOrgId(AppStorage.getActiveOrgId());
+    if (onRoleChange) onRoleChange(result.user);
   };
 
   const handleSelectOrg = (orgId: string) => {
-    AppStorage.setActiveOrgId(orgId);
-    setActiveOrgId(orgId);
     setShowOrgModal(false);
+    if (!AppStorage.setActiveOrgId(orgId)) return;
+    setActiveOrgId(orgId);
     if (onOrgChange) onOrgChange(orgId);
   };
 
@@ -61,18 +78,20 @@ export const Header: React.FC<HeaderProps> = ({ onOrgChange, onRoleChange }) => 
       <TouchableOpacity
         style={styles.orgDropdownBtn}
         onPress={() => setShowOrgModal(true)}
+        disabled={!demoMode}
       >
         <MaterialCommunityIcons name="domain" size={16} color="#4f46e5" />
         <Text style={styles.orgDropdownText} numberOfLines={1}>
           {activeOrg?.name}
         </Text>
-        <MaterialCommunityIcons name="chevron-down" size={16} color="#64748b" />
+        {demoMode && <MaterialCommunityIcons name="chevron-down" size={16} color="#64748b" />}
       </TouchableOpacity>
 
-      {/* User profile & quick role switcher */}
+      {/* User profile & quick role switcher (demo builds only) */}
       <TouchableOpacity
         style={styles.userProfileBtn}
         onPress={() => setShowRoleModal(true)}
+        disabled={!demoMode}
       >
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>
@@ -92,7 +111,7 @@ export const Header: React.FC<HeaderProps> = ({ onOrgChange, onRoleChange }) => 
       </TouchableOpacity>
 
       {/* Org Modal */}
-      <Modal visible={showOrgModal} transparent animationType="fade">
+      <Modal visible={demoMode && showOrgModal} transparent animationType="fade">
         <TouchableOpacity
           style={styles.modalBackdrop}
           activeOpacity={1}
@@ -124,7 +143,7 @@ export const Header: React.FC<HeaderProps> = ({ onOrgChange, onRoleChange }) => 
       </Modal>
 
       {/* Quick Role Switcher Modal */}
-      <Modal visible={showRoleModal} transparent animationType="fade">
+      <Modal visible={demoMode && showRoleModal} transparent animationType="fade">
         <TouchableOpacity
           style={styles.modalBackdrop}
           activeOpacity={1}

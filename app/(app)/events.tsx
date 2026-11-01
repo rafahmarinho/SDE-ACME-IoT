@@ -10,6 +10,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppStorage } from '../../src/services/storage';
 import { subscribeToSimulation } from '../../src/services/simulation';
+import { DataGateway, AuditTrailStatus } from '../../src/services/dataGateway';
 import { EventLog } from '../../src/types';
 
 export default function EventsScreen() {
@@ -17,11 +18,13 @@ export default function EventsScreen() {
   const [events, setEvents] = useState<EventLog[]>([]);
   const [filterType, setFilterType] = useState<string>('all');
   const [selectedEvent, setSelectedEvent] = useState<EventLog | null>(null);
+  const [auditTrail, setAuditTrail] = useState<AuditTrailStatus | null>(DataGateway.getAuditTrailStatus());
 
   const loadData = () => {
     const orgId = AppStorage.getActiveOrgId();
     setActiveOrgId(orgId);
     setEvents(AppStorage.getEvents().filter((e) => e.organizationId === orgId));
+    setAuditTrail(DataGateway.getAuditTrailStatus());
   };
 
   useEffect(() => {
@@ -39,6 +42,7 @@ export default function EventsScreen() {
     { id: 'security_audit', label: 'Security Audits' },
     { id: 'firmware_updated', label: 'Firmware' },
     { id: 'enrollment', label: 'Enrollments' },
+    { id: 'data_change', label: 'Data Changes' },
   ];
 
   const filteredEvents = events.filter(
@@ -53,6 +57,14 @@ export default function EventsScreen() {
           <Text style={styles.subheading}>
             Immutable stream of state modifications, automation executions, and security audits
           </Text>
+          {/* SDE T349: result of the server-side re-verification of the SHA-256 hash chain. */}
+          {auditTrail && (
+            <Text style={[styles.subheading, { color: auditTrail.verified ? '#15803d' : '#b91c1c', fontWeight: '700' }]}>
+              {auditTrail.verified
+                ? `Audit trail integrity verified on the server (${auditTrail.checkedEntries} chained entries)`
+                : 'Audit trail integrity check failed or unavailable'}
+            </Text>
+          )}
         </View>
       </View>
 

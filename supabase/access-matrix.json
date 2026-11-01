@@ -1,0 +1,412 @@
+{
+  "description": "Query-level access chart (SD Elements T2598): every account, role and process that reaches the ACME IoT database, the objects each one needs and the commands allowed on them. Role lists cover rows of the caller's own organization; 'self' lists the commands every role has on its own row. Columns restrict the commands listed. scripts/verify-security-controls.ts compares this chart with the effective policies and grants of supabase/migrations.",
+  "accounts": [
+    {
+      "account": "anon",
+      "kind": "database role",
+      "usedBy": "requests that carry only the public anon key (no signed-in user)",
+      "access": "no table, sequence or function privileges"
+    },
+    {
+      "account": "authenticated",
+      "kind": "database role",
+      "usedBy": "signed-in members: the /api functions forward the caller's own JWT; the Expo client only reads its own profile at sign-in",
+      "access": "per table below, filtered by row-level security on the caller's organization and application role (owner, administrator, operator, viewer)"
+    },
+    {
+      "account": "vercel_api",
+      "kind": "application process",
+      "usedBy": "/api/data, /api/commands, /api/devices",
+      "access": "connects as authenticated with the caller's token (never the service role)"
+    },
+    {
+      "account": "service_role",
+      "kind": "platform process",
+      "usedBy": "device telemetry ingestion, alert generation and the audit retention purge; never used by the app or /api",
+      "access": "bypasses RLS; events_log stays append-only; executes purge_events_log"
+    },
+    {
+      "account": "supabase_auth_admin",
+      "kind": "platform process",
+      "usedBy": "Supabase Auth custom access token hook",
+      "access": "SELECT user_profiles; EXECUTE custom_access_token_hook"
+    }
+  ],
+  "roles": [
+    "owner",
+    "administrator",
+    "operator",
+    "viewer"
+  ],
+  "tables": {
+    "organizations": {
+      "select": [
+        "owner",
+        "administrator",
+        "operator",
+        "viewer"
+      ],
+      "insert": [],
+      "update": [],
+      "delete": []
+    },
+    "user_profiles": {
+      "select": [
+        "owner",
+        "administrator"
+      ],
+      "insert": [],
+      "update": [
+        "owner",
+        "administrator"
+      ],
+      "delete": [
+        "owner",
+        "administrator"
+      ],
+      "self": [
+        "select",
+        "update"
+      ],
+      "columns": {
+        "update": [
+          "full_name",
+          "role"
+        ]
+      },
+      "notes": "Profiles are created by the platform when an invitation is accepted. Administrators only manage operator/viewer profiles; nobody changes their own role or organization; e-mail follows auth.users; other members' profiles need aal2."
+    },
+    "buildings": {
+      "select": [
+        "owner",
+        "administrator",
+        "operator",
+        "viewer"
+      ],
+      "insert": [
+        "owner",
+        "administrator"
+      ],
+      "update": [
+        "owner",
+        "administrator"
+      ],
+      "delete": [
+        "owner",
+        "administrator"
+      ]
+    },
+    "rooms": {
+      "select": [
+        "owner",
+        "administrator",
+        "operator",
+        "viewer"
+      ],
+      "insert": [
+        "owner",
+        "administrator"
+      ],
+      "update": [
+        "owner",
+        "administrator"
+      ],
+      "delete": [
+        "owner",
+        "administrator"
+      ]
+    },
+    "devices": {
+      "select": [
+        "owner",
+        "administrator",
+        "operator",
+        "viewer"
+      ],
+      "insert": [
+        "owner",
+        "administrator"
+      ],
+      "update": [
+        "owner",
+        "administrator",
+        "operator"
+      ],
+      "delete": [
+        "owner",
+        "administrator"
+      ],
+      "columns": {
+        "insert": [
+          "organization_id",
+          "building_id",
+          "room_id",
+          "name",
+          "code",
+          "type",
+          "desired_state"
+        ],
+        "update": [
+          "name",
+          "building_id",
+          "room_id",
+          "desired_state"
+        ]
+      },
+      "notes": "Operators may only change desired_state (trigger devices_operator_column_guard); telemetry columns are written by the platform."
+    },
+    "telemetry_readings": {
+      "select": [
+        "owner",
+        "administrator",
+        "operator",
+        "viewer"
+      ],
+      "insert": [],
+      "update": [],
+      "delete": []
+    },
+    "automations": {
+      "select": [
+        "owner",
+        "administrator",
+        "operator",
+        "viewer"
+      ],
+      "insert": [
+        "owner",
+        "administrator",
+        "operator"
+      ],
+      "update": [
+        "owner",
+        "administrator",
+        "operator"
+      ],
+      "delete": [
+        "owner",
+        "administrator",
+        "operator"
+      ],
+      "columns": {
+        "insert": [
+          "organization_id",
+          "name",
+          "enabled",
+          "trigger_type",
+          "trigger_condition",
+          "action",
+          "interval_seconds",
+          "notify_on_run"
+        ],
+        "update": [
+          "name",
+          "enabled",
+          "trigger_type",
+          "trigger_condition",
+          "action",
+          "interval_seconds",
+          "notify_on_run"
+        ]
+      }
+    },
+    "alerts": {
+      "select": [
+        "owner",
+        "administrator",
+        "operator",
+        "viewer"
+      ],
+      "insert": [],
+      "update": [
+        "owner",
+        "administrator",
+        "operator"
+      ],
+      "delete": [],
+      "columns": {
+        "update": [
+          "status"
+        ]
+      },
+      "notes": "acknowledged_by and resolved_at are set by trigger alerts_transition_guard."
+    },
+    "events_log": {
+      "select": [
+        "owner",
+        "administrator",
+        "operator",
+        "viewer"
+      ],
+      "insert": [],
+      "update": [],
+      "delete": [],
+      "notes": "Written only by triggers and the platform; append-only and hash-chained. Entries about integrations, team invitations and profiles are readable only by owners/administrators with aal2, and entries about consents only by the member who decided (RESTRICTIVE events_sensitive_read_policy)."
+    },
+    "firmware_packages": {
+      "select": [
+        "owner",
+        "administrator",
+        "operator",
+        "viewer"
+      ],
+      "insert": [],
+      "update": [],
+      "delete": [],
+      "notes": "Platform-wide catalog maintained by the platform."
+    },
+    "firmware_rollouts": {
+      "select": [
+        "owner",
+        "administrator",
+        "operator",
+        "viewer"
+      ],
+      "insert": [
+        "owner",
+        "administrator"
+      ],
+      "update": [
+        "owner",
+        "administrator"
+      ],
+      "delete": [],
+      "columns": {
+        "insert": [
+          "organization_id",
+          "firmware_id",
+          "target_type",
+          "total_devices",
+          "status",
+          "progress_percent"
+        ],
+        "update": [
+          "status",
+          "progress_percent"
+        ]
+      }
+    },
+    "integrations": {
+      "select": [
+        "owner",
+        "administrator"
+      ],
+      "insert": [
+        "owner",
+        "administrator"
+      ],
+      "update": [
+        "owner",
+        "administrator"
+      ],
+      "delete": [
+        "owner",
+        "administrator"
+      ],
+      "columns": {
+        "select": [
+          "id",
+          "organization_id",
+          "name",
+          "type",
+          "endpoint_url",
+          "active",
+          "created_at"
+        ],
+        "insert": [
+          "organization_id",
+          "name",
+          "type",
+          "endpoint_url",
+          "active"
+        ],
+        "update": [
+          "name",
+          "endpoint_url",
+          "active"
+        ]
+      },
+      "notes": "api_key_hash is never readable by end users."
+    },
+    "team_invitations": {
+      "select": [
+        "owner",
+        "administrator"
+      ],
+      "insert": [
+        "owner",
+        "administrator"
+      ],
+      "update": [
+        "owner",
+        "administrator"
+      ],
+      "delete": [],
+      "columns": {
+        "insert": [
+          "organization_id",
+          "email",
+          "full_name",
+          "role",
+          "invited_by"
+        ],
+        "update": [
+          "status"
+        ]
+      },
+      "notes": "Administrators only invite operators and viewers; updates can only revoke an invitation."
+    },
+    "privacy_consents": {
+      "select": [],
+      "insert": [],
+      "update": [],
+      "delete": [],
+      "self": [
+        "select",
+        "insert"
+      ],
+      "columns": {
+        "insert": [
+          "organization_id",
+          "purpose",
+          "granted",
+          "notice_version",
+          "locale"
+        ]
+      },
+      "notes": "Append-only consent ledger: each member reads and adds only their own decisions; user_id and decided_at come from the database."
+    }
+  },
+  "stepUp": {
+    "description": "SDE T338: RESTRICTIVE policies that also require a session verified with a second factor (aal2), on top of the role and tenant rules above.",
+    "user_profiles": "rows of other members (own row stays available)",
+    "team_invitations": "every command",
+    "integrations": "every command"
+  },
+  "functions": {
+    "current_user_org_id": [
+      "authenticated"
+    ],
+    "current_user_role": [
+      "authenticated"
+    ],
+    "is_org_device": [
+      "authenticated"
+    ],
+    "is_org_location": [
+      "authenticated"
+    ],
+    "verify_events_log_chain": [
+      "authenticated"
+    ],
+    "purge_events_log": [
+      "service_role"
+    ],
+    "custom_access_token_hook": [
+      "supabase_auth_admin"
+    ],
+    "consented_recipients": [
+      "service_role"
+    ]
+  }
+}

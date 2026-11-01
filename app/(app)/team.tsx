@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,17 +9,26 @@ import {
   TextInput,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { INITIAL_USERS } from '../../src/mock/initialData';
 import { AppStorage } from '../../src/services/storage';
-import { logAuditEvent } from '../../src/services/security';
+import { canAssignRole } from '../../src/services/security';
+import { subscribeToSimulation } from '../../src/services/simulation';
+import { DataGateway } from '../../src/services/dataGateway';
+import { ActionError } from '../../src/components/ActionError';
 import { UserProfile, UserRole } from '../../src/types';
 
 export default function TeamScreen() {
-  const [users, setUsers] = useState<UserProfile[]>(INITIAL_USERS);
+  const [users, setUsers] = useState<UserProfile[]>(DataGateway.getTeamMembers());
   const [modalVisible, setModalVisible] = useState(false);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<UserRole>('operator');
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    return subscribeToSimulation(() => {
+      setUsers(DataGateway.getTeamMembers());
+    });
+  }, []);
 
   const getRoleBadge = (r: UserRole) => {
     switch (r) {
@@ -30,23 +39,20 @@ export default function TeamScreen() {
     }
   };
 
-  const handleInvite = () => {
+  const handleInvite = async () => {
     if (!fullName.trim() || !email.trim()) return;
+    // SDE T14: administrators cannot grant owner/administrator; only owners can. This check only
+    // shapes the UI: the server applies the same rule (API and RLS).
+    if (!canAssignRole(AppStorage.getSessionUser()?.role, role)) return;
 
-    const newUser: UserProfile = {
-      id: 'u_' + Date.now(),
-      email: email.trim(),
-      fullName: fullName.trim(),
-      organizationId: AppStorage.getActiveOrgId(),
-      role,
-      createdAt: new Date().toISOString(),
-    };
-
-    setUsers([...users, newUser]);
-    logAuditEvent('team_member_invited', { email: newUser.email, role: newUser.role });
-    setModalVisible(false);
-    setFullName('');
-    setEmail('');
+    const result = await DataGateway.inviteTeamMember({ fullName: fullName.trim(), email: email.trim(), role });
+    setActionError(result.success ? null : result.error);
+    setUsers(DataGateway.getTeamMembers());
+    if (result.success) {
+      setModalVisible(false);
+      setFullName('');
+      setEmail('');
+    }
   };
 
   return (
@@ -96,6 +102,10 @@ export default function TeamScreen() {
         </View>
       </View>
 
+      <ActionError message={actionError} />
+      {/* SDE T338: the server only serves team data to sessions verified with a second factor. */}
+      <ActionError message={DataGateway.isStepUpRequired() ? 'Two-step verification is required to view and manage team members. Verify this session in Settings.' : null} />
+
       {/* Team Member Cards */}
       <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Active Members ({users.length})</Text>
       <View style={styles.usersList}>
@@ -138,6 +148,8 @@ export default function TeamScreen() {
                 placeholder="e.g. Jordan Miller"
                 value={fullName}
                 onChangeText={setFullName}
+                autoCorrect={false}
+                autoComplete="off"
               />
             </View>
 
@@ -149,6 +161,9 @@ export default function TeamScreen() {
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="off"
               />
             </View>
 
@@ -173,6 +188,8 @@ export default function TeamScreen() {
                 ))}
               </View>
             </View>
+
+            <ActionError message={actionError} />
 
             <TouchableOpacity style={styles.sendBtn} onPress={handleInvite}>
               <Text style={styles.sendBtnText}>Dispatch Secure Invitation</Text>

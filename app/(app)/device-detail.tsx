@@ -9,13 +9,17 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppStorage } from '../../src/services/storage';
-import { SimulationEngine, subscribeToSimulation } from '../../src/services/simulation';
+import { subscribeToSimulation } from '../../src/services/simulation';
+import { DataGateway } from '../../src/services/dataGateway';
+import { resolveInternalId } from '../../src/services/security';
 import { StatusBadge } from '../../src/components/StatusBadge';
 import { Device, Building, Room } from '../../src/types';
 
 export default function DeviceDetailScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // SDE T50: the URL carries an unguessable per-session reference, never the internal device id.
+  const { ref } = useLocalSearchParams<{ ref: string }>();
+  const id = typeof ref === 'string' ? resolveInternalId(ref) : null;
 
   const [device, setDevice] = useState<Device | null>(null);
   const [building, setBuilding] = useState<Building | null>(null);
@@ -26,7 +30,8 @@ export default function DeviceDetailScreen() {
   const loadDevice = () => {
     if (!id) return;
     const all = AppStorage.getDevices();
-    const found = all.find((d) => d.id === id);
+    // SDE T378, T170: the id comes from the URL/deep link, so the device must belong to the session's tenant.
+    const found = all.find((d) => d.id === id && d.organizationId === AppStorage.getActiveOrgId());
     if (found) {
       setDevice(found);
       const b = AppStorage.getBuildings().find((x) => x.id === found.buildingId);
@@ -54,27 +59,28 @@ export default function DeviceDetailScreen() {
     );
   }
 
-  const handleAdjustTemp = (delta: number) => {
+  // The server authorizes the command for this device and role; its answer is shown to the user.
+  const handleAdjustTemp = async (delta: number) => {
     if (isOffline) {
       setFeedback('Control commands cannot be sent in offline mode. Please reconnect.');
       return;
     }
     const current = device.desiredState.target_temp ?? 22.0;
     const next = parseFloat((current + delta).toFixed(1));
-    SimulationEngine.updateDesiredState(device.id, { target_temp: next });
-    setFeedback(`Target temperature command dispatched: ${next}°C`);
+    const result = await DataGateway.updateDesiredState(device.id, { target_temp: next });
+    setFeedback(result.success ? `Target temperature command dispatched: ${next}°C` : result.error);
     setTimeout(() => setFeedback(null), 3000);
   };
 
-  const handleTogglePlug = () => {
+  const handleTogglePlug = async () => {
     if (isOffline) {
       setFeedback('Control commands cannot be sent in offline mode. Please reconnect.');
       return;
     }
     const current = device.desiredState.power ?? 'on';
     const next = current === 'on' ? 'off' : 'on';
-    SimulationEngine.updateDesiredState(device.id, { power: next });
-    setFeedback(`Smart plug power state switched to ${next.toUpperCase()}`);
+    const result = await DataGateway.updateDesiredState(device.id, { power: next });
+    setFeedback(result.success ? `Smart plug power state switched to ${next.toUpperCase()}` : result.error);
     setTimeout(() => setFeedback(null), 3000);
   };
 

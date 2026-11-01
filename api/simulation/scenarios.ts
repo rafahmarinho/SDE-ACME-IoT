@@ -1,4 +1,5 @@
-import type { IncomingMessage, ServerResponse } from 'http';
+import { z } from 'zod';
+import { createRoute } from '../_lib/security';
 
 const SCENARIOS = [
   { id: 'normal', name: 'Normal Operations', description: 'Balanced environmental conditions with minor noise' },
@@ -8,25 +9,24 @@ const SCENARIOS = [
   { id: 'firmware_wave', name: 'Firmware Rollout Wave', description: 'Simulates staged OTA delivery with progress and rollback options' },
 ];
 
-export default function handler(req: IncomingMessage, res: ServerResponse) {
-  res.setHeader('Content-Type', 'application/json');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+const ScenariosResponseSchema = z
+  .object({
+    success: z.literal(true),
+    scenarios: z.array(
+      z.object({ id: z.string(), name: z.string(), description: z.string() }).strict()
+    ),
+  })
+  .strict();
 
-  if (req.method === 'OPTIONS') {
-    res.statusCode = 204;
-    res.end();
-    return;
-  }
-
-  if (req.method === 'GET') {
-    res.statusCode = 200;
-    res.end(JSON.stringify({ success: true, scenarios: SCENARIOS }));
-    return;
-  }
-
-  res.statusCode = 405;
-  res.end(JSON.stringify({ error: 'Method not allowed' }));
-}
+// GET /api/simulation/scenarios: authenticated members with devices:read.
+export default createRoute({
+  name: 'simulation-scenarios',
+  cors: true,
+  methods: {
+    GET: {
+      auth: 'required',
+      permission: 'devices:read',
+      handler: ({ send }) => send(200, ScenariosResponseSchema, { success: true, scenarios: SCENARIOS }),
+    },
+  },
+});

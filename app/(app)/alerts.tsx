@@ -9,7 +9,9 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppStorage } from '../../src/services/storage';
 import { subscribeToSimulation } from '../../src/services/simulation';
-import { logAuditEvent } from '../../src/services/security';
+import { sessionHasPermission } from '../../src/services/security';
+import { DataGateway } from '../../src/services/dataGateway';
+import { ActionError } from '../../src/components/ActionError';
 import { Alert, AlertSeverity } from '../../src/types';
 
 export default function AlertsScreen() {
@@ -17,6 +19,7 @@ export default function AlertsScreen() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [filterSeverity, setFilterSeverity] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('active');
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const loadData = () => {
     const orgId = AppStorage.getActiveOrgId();
@@ -31,28 +34,16 @@ export default function AlertsScreen() {
     });
   }, []);
 
-  const handleAcknowledge = (id: string) => {
-    const all = AppStorage.getAlerts();
-    const target = all.find((a) => a.id === id);
-    if (target) {
-      target.status = 'acknowledged';
-      AppStorage.setAlerts(all);
-      logAuditEvent('alert_acknowledged', { alertId: id, title: target.title });
-      loadData();
-    }
+  // The role check only hides a pointless request; the server authorizes the change (SDE T17).
+  const updateStatus = async (id: string, status: 'acknowledged' | 'resolved') => {
+    if (!sessionHasPermission('alerts:update')) return;
+    const result = await DataGateway.setAlertStatus(id, status);
+    setActionError(result.success ? null : result.error);
+    loadData();
   };
 
-  const handleResolve = (id: string) => {
-    const all = AppStorage.getAlerts();
-    const target = all.find((a) => a.id === id);
-    if (target) {
-      target.status = 'resolved';
-      target.resolvedAt = new Date().toISOString();
-      AppStorage.setAlerts(all);
-      logAuditEvent('alert_resolved', { alertId: id, title: target.title });
-      loadData();
-    }
-  };
+  const handleAcknowledge = (id: string) => updateStatus(id, 'acknowledged');
+  const handleResolve = (id: string) => updateStatus(id, 'resolved');
 
   const filteredAlerts = alerts.filter((a) => {
     const matchesSev = filterSeverity === 'all' || a.severity === filterSeverity;
@@ -103,6 +94,8 @@ export default function AlertsScreen() {
           ))}
         </View>
       </View>
+
+      <ActionError message={actionError} />
 
       {/* Alerts list */}
       <View style={styles.list}>

@@ -28,8 +28,8 @@ Designed with a clean light interface and modern indigo accents (`#4f46e5`), ACM
   - **Battery Drain Emergency**: Accelerates battery depletion down to critical warnings.
   - **Firmware Rollout Wave**: Simulates multi-stage OTA updates (downloading → flashing → rebooting → verification) with one-click automated rollback.
 - **Advance Tick**: Advance simulation time on demand or run automated live ticker.
-- **Reset Demo Data**: Instantly restore the clean 2-organization, 20-device demo dataset.
-- State persists in Supabase / encrypted client storage across reloads.
+- **Reset Demo Data**: Instantly restore the clean 2-organization, 20-device demo dataset (demo builds only, owners/administrators).
+- Demo builds keep their fictitious simulated data in browser localStorage. With a Supabase backend (server mode) the simulation is off: tenant data, the profile and the Supabase tokens stay in memory only and are wiped on logout.
 
 ### 4. Mobile & Web Adaptations
 - **Web**: Responsive layout with sidebar navigation, metric grids, and quick inspector panels.
@@ -43,7 +43,7 @@ Designed with a clean light interface and modern indigo accents (`#4f46e5`), ACM
 - **Administrator**: Full device control, automation rule builder, firmware OTA rollouts, and alert resolutions.
 - **Operator**: Day-to-day operations, adjusting setpoints, toggling power relays, and acknowledging alerts. (Restricted from team invites and firmware rollouts).
 - **Viewer**: Read-only access across all telemetry, rooms, and devices. Control actions and rule modifications are disabled.
-- **Instant Persona Switcher**: Top-bar modal allows instant switching between all 4 personas to evaluate RBAC enforcement.
+- **Instant Persona Switcher**: Top-bar modal allows switching between the 4 personas to evaluate RBAC enforcement (only when `EXPO_PUBLIC_DEMO_MODE=true`).
 
 ### 6. Threat Modeling & SD Elements Traceability
 - Assessed against **SD Elements Project #28** (Application: `ACME IoT`).
@@ -173,6 +173,7 @@ pnpm run typecheck
 3. Execute `supabase/migrations/20261012_init_schema.sql` to create:
    - Tables (`organizations`, `user_profiles`, `buildings`, `rooms`, `devices`, `telemetry_readings`, `automations`, `alerts`, `events_log`, `firmware_packages`, `firmware_rollouts`, `integrations`).
    - Row-Level Security (RLS) policies and tenant isolation functions (`current_user_org_id()`, `current_user_role()`).
+   Then execute, in order, `20261019_security_hardening.sql` and `20261020_server_authoritative_access.sql` (per-role write policies with `WITH CHECK`, column grants, team invitations, data-change audit triggers and the append-only, hash-chained `events_log`).
 4. Execute `supabase/seed.sql` to populate:
    - 2 Organizations (*ACME Global Headquarters* & *Nova Logistics & ColdChain*).
    - 4 Buildings, 6 Rooms, 20 IoT Devices, initial automations, alerts, and firmware binaries.
@@ -194,13 +195,28 @@ ACME IoT is configured out-of-the-box for zero-config deployment on Vercel:
 2. Import the project into your [Vercel Dashboard](https://vercel.com).
 3. Set the Framework Preset to **Other** (handled via `vercel.json`).
 4. Add the environment variables:
-   - `EXPO_PUBLIC_SUPABASE_URL`
+   - `EXPO_PUBLIC_SUPABASE_URL` (`https://` only; plain `http://` is accepted just for a local Supabase on localhost)
    - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY` (optional, for backend administrative tasks)
-5. Deploy. Vercel automatically:
+   - `SUPABASE_JWT_SECRET` and/or `SUPABASE_JWKS` (server only): keys `/api` uses to verify Supabase access tokens. Without them the API answers 503 (fails closed).
+   - `/api` also asks Supabase Auth (`/auth/v1/user`) whether the token's session still exists, so tokens stop working right after logout; it uses `SUPABASE_ANON_KEY` or, if unset, `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
+   - `ALLOWED_ORIGINS` (server only, optional): comma-separated exact origins allowed to call `/api` cross-origin. Empty means same-origin only.
+   - `EXPO_PUBLIC_DEMO_MODE=true` only for non-production demo builds (demo personas, persona/tenant switcher, Reset Demo).
+   - Do not add `SUPABASE_SERVICE_ROLE_KEY`: no code uses it.
+5. Apply `supabase/migrations/20261019_security_hardening.sql` and `supabase/migrations/20261020_server_authoritative_access.sql`, then push the versioned Auth settings with `SUPABASE_AUTH_SITE_URL=<web URL> supabase config push` (`supabase/config.toml`: password standard, invite-only sign-up, recovery link expiry, rate limits, MFA, and the **Custom Access Token** hook `public.custom_access_token_hook`, which adds `org_id` and `user_role` to access tokens; `/api` answers 403 without them).
+6. Deploy. Vercel automatically:
    - Executes `pnpm run build:web` to generate `dist/`.
-   - Deploys the TypeScript Serverless functions from `/api` (e.g. `/api/health`, `/api/devices`, `/api/simulation/tick`).
+   - Deploys the TypeScript Serverless functions from `/api` (`/api/data`, `/api/commands`, `/api/devices`, `/api/health`, `/api/simulation/scenarios`, `/api/auth/logout`, `/api/csp-report`).
    - Enforces hardened HTTP headers (`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `CSP`, and `HSTS`).
+
+### Release security checklist
+
+These controls are on by default and must stay on in every release (SD Elements T49):
+
+- **Server mode is the production mode.** With a Supabase backend configured, the app reads tenant data only from `GET /api/data` and changes it only through `POST /api/commands` and `POST /api/devices`. The API checks the token, the caller's current role and organization in the database, the permission of each command and the tenant of each object; Postgres RLS (`supabase/access-matrix.json` documents every account, table, column and function) enforces the same rules for direct database access.
+- **Nothing sensitive in the browser.** In server mode tenant data, profile and Supabase tokens stay in memory (no localStorage/sessionStorage); a page reload requires signing in again.
+- **No demo code paths or data.** Build releases without `EXPO_PUBLIC_DEMO_MODE=true`: `metro.config.js` then replaces the demo dataset and personas with an empty module, and the persona switcher, tenant switcher, simulation controls and Reset Demo stay disabled. No source maps are published.
+- **Audit trail.** `events_log` is append-only and SHA-256 hash-chained; `/api/data` re-verifies the entries it serves and the Events page shows the result. Only `purge_events_log(retention_days >= 365)` (service role) removes old entries.
+- **Verification.** CI runs `pnpm typecheck`, `pnpm test`, `pnpm build:web`, `pnpm test:security` (which inspects the export) and `pnpm audit --prod`.
 
 ---
 
@@ -260,6 +276,7 @@ npx expo run:ios
 - **Evaluated Countermeasures:** All 85 requirements updated with bilingual technical rationale (Portuguese & English) and the exact signed footer:
   `RafahMarinho with Agentic AI`.
 - Complete traceability is documented in `docs/security/sde-controls-assessment.json` and `docs/security/threat-model.md`.
+- `scripts/sync-sde-tasks.ts` reads `SDE_URL` and `SDE_API_TOKEN` from the environment (shell or CI secret store) and refuses to run without them; never commit these values.
 
 ---
 
@@ -272,4 +289,4 @@ npx expo run:ios
 | **Operator** | Marcus Vance | `marcus.vance@acme-iot.com` | Live telemetry inspection, setpoint adjustment, relay toggle, alert resolution. |
 | **Viewer** | Elena Rostova | `elena.rostova@acme-iot.com` | Read-only inspection of telemetry, 3D twins, and events. Control disabled. |
 
-*(Use the top-bar persona switcher to test role adaptation on any screen instantly)*.
+*(Demo personas only work in builds with `EXPO_PUBLIC_DEMO_MODE=true` and no Supabase backend; use the top-bar persona switcher there to test role adaptation.)*

@@ -8,6 +8,7 @@ import {
   TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { getPublicReference } from '../../src/services/security';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppStorage } from '../../src/services/storage';
 import { subscribeToSimulation } from '../../src/services/simulation';
@@ -140,7 +141,7 @@ export default function DevicesScreen() {
               onPress={() => {
                 router.push({
                   pathname: '/(app)/device-detail',
-                  params: { id: dev.id },
+                  params: { ref: getPublicReference(dev.id) },
                 } as any);
               }}
               onRefresh={loadData}

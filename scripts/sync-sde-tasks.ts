@@ -14,8 +14,43 @@ const assessments: TaskAssessment[] = JSON.parse(
   fs.readFileSync('docs/security/sde-controls-assessment.json', 'utf8')
 );
 
-const API_KEY = '3f01144acd87fd7d927c08a0e5b99a77af5c5ead';
-const HOSTNAME = 'sde-ent-echo.sdelab.net';
+// SDE T76/T248: the SD Elements endpoint and API token come from the environment
+// (shell, CI secret store or a local .env file that is git-ignored). Never hardcode them.
+interface SdeConfig {
+  hostname: string;
+  port: number;
+  apiToken: string;
+}
+
+function loadSdeConfig(env: NodeJS.ProcessEnv = process.env): SdeConfig {
+  const rawUrl = (env.SDE_URL || '').trim();
+  const apiToken = (env.SDE_API_TOKEN || '').trim();
+  const missing = [rawUrl ? '' : 'SDE_URL', apiToken ? '' : 'SDE_API_TOKEN'].filter(Boolean);
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required environment variable(s): ${missing.join(', ')}. ` +
+        'Export them in your shell or CI secret store before running this script (never commit credentials).'
+    );
+  }
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    throw new Error('SDE_URL must be a valid URL, for example https://sde.example.com');
+  }
+  if (url.protocol !== 'https:') {
+    throw new Error('SDE_URL must use https:// so the API token is never sent in clear text.');
+  }
+  return { hostname: url.hostname, port: url.port ? Number(url.port) : 443, apiToken };
+}
+
+let SDE_CONFIG: SdeConfig;
+try {
+  SDE_CONFIG = loadSdeConfig();
+} catch (err: any) {
+  console.error(`[sync-sde-tasks] ${err.message}`);
+  process.exit(1);
+}
 
 const STATUS_MAP = {
   Complete: 'TS1',
@@ -28,12 +63,12 @@ function apiRequest(path: string, method: string, data?: any): Promise<{ status:
     const postData = data ? JSON.stringify(data) : undefined;
     const req = https.request(
       {
-        hostname: HOSTNAME,
-        port: 443,
+        hostname: SDE_CONFIG.hostname,
+        port: SDE_CONFIG.port,
         path,
         method,
         headers: {
-          Authorization: `Token ${API_KEY}`,
+          Authorization: `Token ${SDE_CONFIG.apiToken}`,
           'Content-Type': 'application/json',
           Accept: 'application/json',
           ...(postData ? { 'Content-Length': Buffer.byteLength(postData) } : {}),

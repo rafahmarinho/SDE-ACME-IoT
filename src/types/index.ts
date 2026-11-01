@@ -167,7 +167,10 @@ export interface EventLog {
     | 'firmware_updated'
     | 'enrollment'
     | 'security_audit'
-    | 'user_action';
+    | 'user_action'
+    // Written by the database audit triggers in server mode.
+    | 'data_change'
+    | 'audit_purge';
   actorId?: string;
   actorRole?: string;
   payload: Record<string, any>;
@@ -180,7 +183,8 @@ export interface FirmwarePackage {
   deviceType: DeviceType;
   checksumSha256: string;
   fileSizeBytes: number;
-  fileUrl: string;
+  // Storage location of the image; not sent to the app by the API (devices fetch it directly).
+  fileUrl?: string;
   status: 'released' | 'testing' | 'deprecated';
   changelog: string;
   createdAt: string;

@@ -3,12 +3,20 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppStorage } from '../services/storage';
 import { SimulationEngine, subscribeToSimulation } from '../services/simulation';
+import { hasPermission } from '../services/security';
+import { isDemoModeEnabled } from '../config/runtime';
 import { SimulationScenario } from '../types';
 
 export const ScenarioBar: React.FC<{ onReset?: () => void }> = ({ onReset }) => {
   const [scenario, setScenario] = useState<SimulationScenario>(AppStorage.getScenario());
   const [isSimRunning, setIsSimRunning] = useState<boolean>(SimulationEngine.isActive());
   const [isOffline, setIsOffline] = useState<boolean>(AppStorage.isOfflineMode());
+
+  // SDE T15, T49: simulation controls follow the central RBAC matrix; "Reset Demo" (which also
+  // wipes the local event log) is a demo-only aid for owners/administrators.
+  const role = AppStorage.getSessionUser()?.role;
+  const canControlSimulation = hasPermission(role, 'simulation:advance');
+  const canResetDemo = isDemoModeEnabled() && hasPermission(role, 'devices:admin');
 
   useEffect(() => {
     return subscribeToSimulation(() => {
@@ -18,15 +26,16 @@ export const ScenarioBar: React.FC<{ onReset?: () => void }> = ({ onReset }) => 
   }, []);
 
   const handleScenarioChange = (s: SimulationScenario) => {
-    setScenario(s);
-    SimulationEngine.setScenario(s);
+    if (SimulationEngine.setScenario(s).success) setScenario(s);
   };
 
   const handleAdvance = () => {
+    if (!canControlSimulation) return;
     SimulationEngine.advanceTick();
   };
 
   const handleToggleTimer = () => {
+    if (!canControlSimulation) return;
     if (isSimRunning) {
       SimulationEngine.stop();
       setIsSimRunning(false);
@@ -37,12 +46,14 @@ export const ScenarioBar: React.FC<{ onReset?: () => void }> = ({ onReset }) => 
   };
 
   const handleToggleOffline = () => {
+    if (!canControlSimulation) return;
     const next = !isOffline;
     setIsOffline(next);
     AppStorage.setOfflineMode(next);
   };
 
   const handleReset = () => {
+    if (!canResetDemo) return;
     AppStorage.resetToDemoData();
     setScenario('normal');
     setIsOffline(false);
@@ -99,10 +110,12 @@ export const ScenarioBar: React.FC<{ onReset?: () => void }> = ({ onReset }) => 
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.btn, styles.btnOutline]} onPress={handleReset}>
-            <MaterialCommunityIcons name="backup-restore" size={15} color="#475569" />
-            <Text style={[styles.btnText, { color: '#475569' }]}>Reset Demo</Text>
-          </TouchableOpacity>
+          {canResetDemo && (
+            <TouchableOpacity style={[styles.btn, styles.btnOutline]} onPress={handleReset}>
+              <MaterialCommunityIcons name="backup-restore" size={15} color="#475569" />
+              <Text style={[styles.btnText, { color: '#475569' }]}>Reset Demo</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 

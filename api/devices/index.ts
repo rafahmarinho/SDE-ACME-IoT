@@ -1,99 +1,111 @@
-import type { IncomingMessage, ServerResponse } from 'http';
 import { z } from 'zod';
+import { ApiError, createRoute, logActivityEvent } from '../_lib/security';
+import { TenantStore } from '../_lib/store';
+import { DEVICE_TYPES, PRINTABLE_TEXT } from '../_lib/tenantData';
 
-// SDE T536, T42: Request validation schema
-const EnrollDeviceSchema = z.object({
-  name: z.string().min(2).max(100),
-  code: z.string().min(3).max(50),
-  type: z.enum(['thermostat', 'smart_plug', 'temperature_sensor', 'humidity_sensor', 'occupancy_sensor']),
-  buildingId: z.string(),
-  roomId: z.string(),
-  organizationId: z.string(),
-});
+// SDE T536, T42, T569, T34: strict request schema (strong types, bounded lengths, unknown fields rejected)
+const EnrollDeviceSchema = z
+  .object({
+    name: z.string().trim().min(2).max(100).regex(PRINTABLE_TEXT),
+    code: z.string().trim().min(3).max(50).regex(/^[A-Za-z0-9_-]+$/),
+    type: z.enum(DEVICE_TYPES),
+    buildingId: z.string().uuid(),
+    roomId: z.string().uuid(),
+    // Optional; when present it must match the caller's organization from the verified token.
+    organizationId: z.string().uuid().optional(),
+  })
+  .strict();
 
-function parseBody(req: IncomingMessage): Promise<any> {
-  return new Promise((resolve, reject) => {
-    let body = '';
-    req.on('data', (chunk) => {
-      body += chunk;
-      // SDE T536: Restrict size of incoming messages (max 50KB)
-      if (body.length > 50 * 1024) {
-        reject(new Error('Payload too large'));
-      }
-    });
-    req.on('end', () => {
-      try {
-        resolve(body ? JSON.parse(body) : {});
-      } catch (e) {
-        reject(new Error('Invalid JSON'));
-      }
-    });
-  });
-}
-
-export default async function handler(req: IncomingMessage, res: ServerResponse) {
-  res.setHeader('Content-Type', 'application/json');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
-    res.statusCode = 204;
-    res.end();
-    return;
-  }
-
-  // GET: Return simulated device list
-  if (req.method === 'GET') {
-    res.statusCode = 200;
-    res.end(
-      JSON.stringify({
-        success: true,
-        count: 20,
-        message: 'Use client-side Supabase client or local storage for direct realtime access.',
+// SDE T2139: only these fields can leave the API.
+const EnrolledDeviceResponseSchema = z
+  .object({
+    success: z.literal(true),
+    device: z
+      .object({
+        id: z.string().uuid(),
+        name: z.string(),
+        code: z.string(),
+        type: z.enum(DEVICE_TYPES),
+        buildingId: z.string().uuid(),
+        roomId: z.string().uuid(),
+        organizationId: z.string().uuid(),
+        status: z.literal('online'),
+        createdAt: z.string(),
       })
-    );
-    return;
-  }
+      .strict(),
+  })
+  .strict();
 
-  // POST: Validate enrollment payload
-  if (req.method === 'POST') {
-    try {
-      const raw = await parseBody(req);
-      const parsed = EnrollDeviceSchema.safeParse(raw);
-      if (!parsed.success) {
-        res.statusCode = 400;
-        res.end(
-          JSON.stringify({
-            error: 'Validation failed',
-            details: parsed.error.issues,
-          })
-        );
-        return;
-      }
+const INITIAL_DESIRED_STATE: Record<(typeof DEVICE_TYPES)[number], Record<string, unknown>> = {
+  thermostat: { target_temp: 22.0, mode: 'cooling' },
+  smart_plug: { power: 'on' },
+  temperature_sensor: {},
+  humidity_sensor: {},
+  occupancy_sensor: {},
+};
 
-      res.statusCode = 201;
-      res.end(
-        JSON.stringify({
-          success: true,
-          message: 'Device enrolled successfully',
-          device: {
-            ...parsed.data,
-            id: 'd_api_' + Date.now(),
-            status: 'online',
-            createdAt: new Date().toISOString(),
+type Row = Record<string, any>;
+
+// POST /api/devices: device enrollment, restricted to roles with devices:admin.
+export default createRoute({
+  name: 'devices',
+  cors: true,
+  rateLimit: { max: 30, windowMs: 60000 },
+  methods: {
+    POST: {
+      auth: 'required',
+      permission: 'devices:admin',
+      handler: async (ctx) => {
+        const body = await ctx.readBody(EnrollDeviceSchema);
+        const store = TenantStore.forCaller(ctx);
+        const organizationId = store.organizationId;
+        // SDE T18, T378: the tenant comes from the verified token, never from the request body.
+        if (body.organizationId && body.organizationId !== organizationId) {
+          throw new ApiError(403, 'Forbidden', 'organizationId does not match the caller organization');
+        }
+        // SDE T378: the referenced building must belong to the caller's organization and the room to that building.
+        const building = await store.findOne<Row>('buildings', 'id', { id: body.buildingId, organization_id: organizationId });
+        if (!building) throw new ApiError(404, 'Not found', 'building is not in the caller organization');
+        const room = await store.findOne<Row>('rooms', 'id', { id: body.roomId, building_id: body.buildingId });
+        if (!room) throw new ApiError(404, 'Not found', 'room is not in the selected building');
+
+        const device = await store.insert<Row>(
+          'devices',
+          {
+            organization_id: organizationId,
+            building_id: body.buildingId,
+            room_id: body.roomId,
+            name: body.name,
+            code: body.code.toUpperCase(),
+            type: body.type,
+            desired_state: INITIAL_DESIRED_STATE[body.type],
           },
-        })
-      );
-    } catch (err: any) {
-      res.statusCode = err.message === 'Payload too large' ? 413 : 400;
-      res.end(JSON.stringify({ error: err.message }));
-    }
-    return;
-  }
-
-  res.statusCode = 405;
-  res.end(JSON.stringify({ error: 'Method not allowed' }));
-}
+          'id,name,code,type,building_id,room_id,organization_id,status,created_at'
+        );
+        logActivityEvent('device_enrolled', {
+          route: 'devices',
+          method: 'POST',
+          userId: store.principal.userId,
+          organizationId,
+          objectType: 'device',
+          objectId: device.id,
+          changes: { code: device.code, type: device.type, buildingId: body.buildingId, roomId: body.roomId },
+        });
+        ctx.send(201, EnrolledDeviceResponseSchema, {
+          success: true,
+          device: {
+            id: device.id,
+            name: device.name,
+            code: device.code,
+            type: device.type,
+            buildingId: device.building_id,
+            roomId: device.room_id,
+            organizationId: device.organization_id,
+            status: device.status,
+            createdAt: device.created_at,
+          },
+        });
+      },
+    },
+  },
+});

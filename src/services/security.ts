@@ -1,75 +1,15 @@
 // ACME IoT Security Services & Controls (Aligned with SD Elements Countermeasures)
-import { UserRole, EventLog } from '../types';
+import { EventLog, UserProfile } from '../types';
 import { AppStorage } from './storage';
+import { generateSecureId, hasPermission, Permission } from './securityCore';
 
-export type Permission =
-  | 'devices:read'
-  | 'devices:control'
-  | 'devices:admin'
-  | 'automations:read'
-  | 'automations:write'
-  | 'alerts:read'
-  | 'alerts:update'
-  | 'firmware:read'
-  | 'firmware:manage'
-  | 'team:manage'
-  | 'integrations:manage'
-  | 'simulation:advance'
-  | 'audit:export';
+// RBAC matrix, route access map, rate limiter, CSPRNG and SHA-256 helpers live in the
+// framework-agnostic core so the API routes run exactly the same checks as the client.
+export * from './securityCore';
 
-const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
-  owner: [
-    'devices:read',
-    'devices:control',
-    'devices:admin',
-    'automations:read',
-    'automations:write',
-    'alerts:read',
-    'alerts:update',
-    'firmware:read',
-    'firmware:manage',
-    'team:manage',
-    'integrations:manage',
-    'simulation:advance',
-    'audit:export',
-  ],
-  administrator: [
-    'devices:read',
-    'devices:control',
-    'devices:admin',
-    'automations:read',
-    'automations:write',
-    'alerts:read',
-    'alerts:update',
-    'firmware:read',
-    'firmware:manage',
-    'team:manage',
-    'integrations:manage',
-    'simulation:advance',
-    'audit:export',
-  ],
-  operator: [
-    'devices:read',
-    'devices:control',
-    'automations:read',
-    'automations:write',
-    'alerts:read',
-    'alerts:update',
-    'firmware:read',
-    'simulation:advance',
-  ],
-  viewer: [
-    'devices:read',
-    'automations:read',
-    'alerts:read',
-    'firmware:read',
-  ],
-};
-
-// SDE T338, T17, T145: Server & client unified authorization guard
-export function hasPermission(role: UserRole, permission: Permission): boolean {
-  const perms = ROLE_PERMISSIONS[role] || [];
-  return perms.includes(permission);
+// Central RBAC decision for the signed-in user (false when nobody is signed in).
+export function sessionHasPermission(permission: Permission): boolean {
+  return hasPermission(AppStorage.getSessionUser()?.role, permission);
 }
 
 // SDE T50: Indirect object reference mapping (prevents exposing internal IDs directly)
@@ -80,7 +20,8 @@ export function getPublicReference(internalId: string): string {
   if (objectRefMap.has(internalId)) {
     return objectRefMap.get(internalId)!;
   }
-  const ref = 'ref_' + Math.random().toString(36).substring(2, 10);
+  // SDE T151: references must be unguessable, so they come from the CSPRNG (128 bits).
+  const ref = generateSecureId('ref_');
   objectRefMap.set(internalId, ref);
   reverseRefMap.set(ref, internalId);
   return ref;
@@ -88,6 +29,12 @@ export function getPublicReference(internalId: string): string {
 
 export function resolveInternalId(publicRef: string): string | null {
   return reverseRefMap.get(publicRef) || null;
+}
+
+// References are valid for one session only: logout forgets them.
+export function clearPublicReferences(): void {
+  objectRefMap.clear();
+  reverseRefMap.clear();
 }
 
 // SDE T36, T37: Sanitize and escape untrusted string input
@@ -108,51 +55,21 @@ export function sanitizeString(input: unknown): string {
     .trim();
 }
 
-// SDE T1362, T70: Token bucket rate limiter / throttling
-const requestCounts = new Map<string, { count: number; windowStart: number }>();
-
-export function checkRateLimit(clientId: string, maxRequests = 60, windowMs = 60000): { allowed: boolean; remaining: number } {
-  const now = Date.now();
-  const entry = requestCounts.get(clientId) || { count: 0, windowStart: now };
-
-  if (now - entry.windowStart > windowMs) {
-    entry.count = 1;
-    entry.windowStart = now;
-    requestCounts.set(clientId, entry);
-    return { allowed: true, remaining: maxRequests - 1 };
-  }
-
-  if (entry.count >= maxRequests) {
-    return { allowed: false, remaining: 0 };
-  }
-
-  entry.count += 1;
-  requestCounts.set(clientId, entry);
-  return { allowed: true, remaining: maxRequests - entry.count };
-}
-
 // SDE T2602, T349, T755: Audit logging engine with integrity
 export function logAuditEvent(
   action: string,
   details: Record<string, any>,
-  user = AppStorage.getCurrentUser()
+  user: UserProfile | null = AppStorage.getSessionUser()
 ): EventLog {
   return AppStorage.addEvent({
-    organizationId: user.organizationId,
+    organizationId: user?.organizationId ?? AppStorage.getActiveOrgId(),
     eventType: 'security_audit',
-    actorId: user.id,
-    actorRole: user.role,
+    actorId: user?.id,
+    actorRole: user?.role,
     payload: {
       action,
       ...details,
       timestamp: new Date().toISOString(),
     },
   });
-}
-
-// SDE T59, T60: Verify SHA-256 Checksum simulation
-export function verifyChecksum(payload: string, expectedHex: string): boolean {
-  // In pure JS / browser simulation:
-  if (!expectedHex || expectedHex.length !== 64) return false;
-  return true;
 }

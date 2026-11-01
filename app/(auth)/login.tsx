@@ -12,21 +12,29 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AuthService, isSupabaseConfigured } from '../../src/services/supabase';
 import { INITIAL_USERS } from '../../src/mock/initialData';
-import { AppStorage } from '../../src/services/storage';
+import { isDemoModeEnabled } from '../../src/config/runtime';
+
+// Demo personas are only offered in opt-in demo builds without a real backend (SDE T49, T61).
+const SHOW_DEMO_PERSONAS = isDemoModeEnabled() && !isSupabaseConfigured;
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState('sarah.chen@acme-iot.com');
-  const [password, setPassword] = useState('SuperSecretP@ssword123!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mfaStep, setMfaStep] = useState(false);
+  const [mfaCode, setMfaCode] = useState('');
 
   const handleLogin = async () => {
     setError(null);
     setLoading(true);
     try {
       const result = await AuthService.signIn(email, password);
-      if (result.error) {
+      if (result.mfaRequired) {
+        setPassword('');
+        setMfaStep(true);
+      } else if (result.error) {
         setError(result.error);
       } else {
         router.replace('/(app)/dashboard');
@@ -38,11 +46,31 @@ export default function LoginScreen() {
     }
   };
 
+  // SDE T338: second step for members who enabled two-step verification.
+  const handleVerifyCode = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const result = await AuthService.verifySignInCode(mfaCode);
+      if (result.user) {
+        router.replace('/(app)/dashboard');
+      } else {
+        setError(result.error || 'The verification code is not valid.');
+      }
+    } finally {
+      setMfaCode('');
+      setLoading(false);
+    }
+  };
+
+  // Goes through AuthService, which refuses personas outside demo mode.
   const handleQuickSelect = (u: (typeof INITIAL_USERS)[0]) => {
-    setEmail(u.email);
-    setPassword('DemoPass2026!');
-    AppStorage.setCurrentUser(u);
-    AppStorage.setActiveOrgId(u.organizationId);
+    setError(null);
+    const result = AuthService.signInDemoPersona(u.email);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
     router.replace('/(app)/dashboard');
   };
 
@@ -65,7 +93,7 @@ export default function LoginScreen() {
           <View style={[styles.configuredBadge, { backgroundColor: '#f1f5f9' }]}>
             <MaterialCommunityIcons name="memory" size={14} color="#475569" />
             <Text style={[styles.configuredBadgeText, { color: '#475569' }]}>
-              Local Sandbox / Demo Mode Active
+              {SHOW_DEMO_PERSONAS ? 'Local Sandbox / Demo Mode Active' : 'Authentication backend not configured'}
             </Text>
           </View>
         )}
@@ -77,74 +105,107 @@ export default function LoginScreen() {
           </View>
         )}
 
-        {/* Input fields */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Corporate Email</Text>
-          <TextInput
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            placeholder="name@company.com"
-          />
-        </View>
+        {!mfaStep ? (
+          <>
+            {/* Input fields */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Corporate Email</Text>
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                textContentType="username"
+                placeholder="name@company.com"
+              />
+            </View>
 
-        <View style={styles.inputGroup}>
-          <View style={styles.passwordRow}>
-            <Text style={styles.inputLabel}>Password</Text>
-            <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')}>
-              <Text style={styles.forgotLink}>Forgot password?</Text>
+            <View style={styles.inputGroup}>
+              <View style={styles.passwordRow}>
+                <Text style={styles.inputLabel}>Password</Text>
+                <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')}>
+                  <Text style={styles.forgotLink}>Forgot password?</Text>
+                </TouchableOpacity>
+              </View>
+              <TextInput
+                style={styles.input}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoCorrect={false}
+                autoCapitalize="none"
+                autoComplete="current-password"
+                textContentType="password"
+                placeholder="••••••••••••"
+              />
+            </View>
+
+            <TouchableOpacity style={styles.loginBtn} onPress={handleLogin} disabled={loading}>
+              {loading ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <>
+                  <Text style={styles.loginBtnText}>Sign In to Platform</Text>
+                  <MaterialCommunityIcons name="arrow-right" size={16} color="#ffffff" />
+                </>
+              )}
             </TouchableOpacity>
-          </View>
-          <TextInput
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            placeholder="••••••••••••"
-          />
-        </View>
+          </>
+        ) : (
+          <>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Verification code from your authenticator app</Text>
+              <TextInput
+                style={styles.input}
+                value={mfaCode}
+                onChangeText={setMfaCode}
+                keyboardType="number-pad"
+                autoCorrect={false}
+                autoComplete="one-time-code"
+                textContentType="oneTimeCode"
+                maxLength={6}
+                placeholder="123456"
+              />
+            </View>
+            <TouchableOpacity style={styles.loginBtn} onPress={handleVerifyCode} disabled={loading}>
+              {loading ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.loginBtnText}>Verify and Sign In</Text>}
+            </TouchableOpacity>
+          </>
+        )}
 
-        <TouchableOpacity style={styles.loginBtn} onPress={handleLogin} disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <>
-              <Text style={styles.loginBtnText}>Sign In to Platform</Text>
-              <MaterialCommunityIcons name="arrow-right" size={16} color="#ffffff" />
-            </>
-          )}
-        </TouchableOpacity>
+        {/* Quick Role Switcher for RBAC Inspection (demo builds only) */}
+        {SHOW_DEMO_PERSONAS && (
+          <View style={styles.quickAccessSection}>
+            <View style={styles.dividerRow}>
+              <View style={styles.line} />
+              <Text style={styles.dividerText}>OR SELECT A ROLE PERSONA</Text>
+              <View style={styles.line} />
+            </View>
 
-        {/* Quick Role Switcher for RBAC Inspection */}
-        <View style={styles.quickAccessSection}>
-          <View style={styles.dividerRow}>
-            <View style={styles.line} />
-            <Text style={styles.dividerText}>OR SELECT A ROLE PERSONA</Text>
-            <View style={styles.line} />
+            <View style={styles.roleGrid}>
+              {INITIAL_USERS.map((u) => (
+                <TouchableOpacity
+                  key={u.id}
+                  style={styles.roleCard}
+                  onPress={() => handleQuickSelect(u)}
+                >
+                  <View style={styles.roleHeader}>
+                    <Text style={styles.roleTag}>{u.role.toUpperCase()}</Text>
+                  </View>
+                  <Text style={styles.roleName} numberOfLines={1}>
+                    {u.fullName.split(' ')[0]}
+                  </Text>
+                  <Text style={styles.roleEmail} numberOfLines={1}>
+                    {u.email}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-
-          <View style={styles.roleGrid}>
-            {INITIAL_USERS.map((u) => (
-              <TouchableOpacity
-                key={u.id}
-                style={styles.roleCard}
-                onPress={() => handleQuickSelect(u)}
-              >
-                <View style={styles.roleHeader}>
-                  <Text style={styles.roleTag}>{u.role.toUpperCase()}</Text>
-                </View>
-                <Text style={styles.roleName} numberOfLines={1}>
-                  {u.fullName.split(' ')[0]}
-                </Text>
-                <Text style={styles.roleEmail} numberOfLines={1}>
-                  {u.email}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+        )}
       </View>
     </ScrollView>
   );

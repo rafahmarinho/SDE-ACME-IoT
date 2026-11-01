@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Device } from '../types';
 import { StatusBadge } from './StatusBadge';
-import { SimulationEngine } from '../services/simulation';
+import { DataGateway } from '../services/dataGateway';
 import { AppStorage } from '../services/storage';
 
 interface DeviceCardProps {
@@ -17,21 +17,21 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress, onRefre
   const isDeviceOffline = device.status === 'offline';
   const disableControls = isOfflineMode || isDeviceOffline;
 
-  // Temperature control handlers
-  const handleTempDelta = (delta: number) => {
+  // Temperature control handlers (authorized by the server in server mode)
+  const handleTempDelta = async (delta: number) => {
     if (disableControls) return;
     const current = device.desiredState.target_temp ?? 22.0;
     const next = parseFloat((current + delta).toFixed(1));
-    SimulationEngine.updateDesiredState(device.id, { target_temp: next });
+    await DataGateway.updateDesiredState(device.id, { target_temp: next });
     if (onRefresh) onRefresh();
   };
 
   // Plug control handler
-  const handleTogglePlug = () => {
+  const handleTogglePlug = async () => {
     if (disableControls) return;
     const current = device.desiredState.power ?? 'on';
     const next = current === 'on' ? 'off' : 'on';
-    SimulationEngine.updateDesiredState(device.id, { power: next });
+    await DataGateway.updateDesiredState(device.id, { power: next });
     if (onRefresh) onRefresh();
   };
 

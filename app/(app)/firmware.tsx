@@ -8,14 +8,17 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppStorage } from '../../src/services/storage';
-import { SimulationEngine, subscribeToSimulation } from '../../src/services/simulation';
+import { subscribeToSimulation } from '../../src/services/simulation';
+import { DataGateway } from '../../src/services/dataGateway';
 import { StatusBadge } from '../../src/components/StatusBadge';
+import { ActionError } from '../../src/components/ActionError';
 import { FirmwarePackage, FirmwareRollout, Device } from '../../src/types';
 
 export default function FirmwareScreen() {
   const [packages, setPackages] = useState<FirmwarePackage[]>([]);
   const [rollouts, setRollouts] = useState<FirmwareRollout[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const loadData = () => {
     setPackages(AppStorage.getFirmwarePackages());
@@ -30,27 +33,17 @@ export default function FirmwareScreen() {
     });
   }, []);
 
-  const handleStartRollout = (pkg: FirmwarePackage) => {
-    const targetDevs = devices.filter((d) => d.type === pkg.deviceType);
-    const newRollout: FirmwareRollout = {
-      id: 'ro_' + Date.now(),
-      firmwareId: pkg.id,
-      targetType: pkg.deviceType,
-      totalDevices: targetDevs.length,
-      updatedDevices: 0,
-      failedDevices: 0,
-      status: 'in_progress',
-      progressPercent: 10,
-      createdAt: new Date().toISOString(),
-    };
-
-    const current = AppStorage.getFirmwareRollouts();
-    AppStorage.setFirmwareRollouts([newRollout, ...current]);
+  // Authorization (firmware:manage), tenant scoping and the audit trail are enforced by the server
+  // (the local engine applies the same rules in demo builds).
+  const handleStartRollout = async (pkg: FirmwarePackage) => {
+    const result = await DataGateway.startRollout(pkg.id);
+    setActionError(result.success ? null : result.error);
     loadData();
   };
 
-  const handleRollback = (rolloutId: string) => {
-    SimulationEngine.rollbackRollout(rolloutId);
+  const handleRollback = async (rolloutId: string) => {
+    const result = await DataGateway.rollbackRollout(rolloutId);
+    setActionError(result.success ? null : result.error);
     loadData();
   };
 
@@ -64,6 +57,8 @@ export default function FirmwareScreen() {
           </Text>
         </View>
       </View>
+
+      <ActionError message={actionError} />
 
       {/* Active OTA Rollouts Section */}
       <Text style={styles.sectionTitle}>Active Rollout Campaigns</Text>

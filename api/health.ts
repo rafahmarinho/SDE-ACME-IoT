@@ -1,28 +1,22 @@
-import type { IncomingMessage, ServerResponse } from 'http';
+import { z } from 'zod';
+import { createRoute } from './_lib/security';
 
-export default function handler(req: IncomingMessage, res: ServerResponse) {
-  // SDE T35, T257: Security headers & CORS
-  res.setHeader('Content-Type', 'application/json');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+// SDE T373, T2139, T1873: the only unauthenticated API route. It reports liveness only
+// (no product name, version or database vendor) and accepts GET exclusively.
+const HealthResponseSchema = z
+  .object({
+    status: z.literal('ok'),
+    timestamp: z.string(),
+  })
+  .strict();
 
-  if (req.method === 'OPTIONS') {
-    res.statusCode = 204;
-    res.end();
-    return;
-  }
-
-  res.statusCode = 200;
-  res.end(
-    JSON.stringify({
-      status: 'healthy',
-      platform: 'ACME IoT Cloud API',
-      version: '1.0.0',
-      timestamp: new Date().toISOString(),
-      database: 'PostgreSQL (Supabase)',
-      simulationEngine: 'active',
-    })
-  );
-}
+export default createRoute({
+  name: 'health',
+  rateLimit: { max: 60, windowMs: 60000 },
+  methods: {
+    GET: {
+      auth: 'public',
+      handler: ({ send }) => send(200, HealthResponseSchema, { status: 'ok', timestamp: new Date().toISOString() }),
+    },
+  },
+});

@@ -11,24 +11,33 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AuthService } from '../../src/services/supabase';
 
+// SDE T2: one recovery request per minute from this page (Supabase Auth also rate limits per address and IP).
+const REQUEST_COOLDOWN_MS = 60000;
+
 export default function ForgotPasswordScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ text: string; success: boolean } | null>(null);
+  const [lastRequestAt, setLastRequestAt] = useState(0);
 
   const handleReset = async () => {
     if (!email || !email.includes('@')) {
       setFeedback({ text: 'Please enter a valid corporate email address.', success: false });
       return;
     }
+    if (Date.now() - lastRequestAt < REQUEST_COOLDOWN_MS) {
+      setFeedback({ text: 'A recovery e-mail was just requested. Please wait a minute before trying again.', success: false });
+      return;
+    }
     setLoading(true);
     setFeedback(null);
     try {
       const res = await AuthService.resetPassword(email);
+      setLastRequestAt(Date.now());
       setFeedback({ text: res.message, success: res.success });
-    } catch (err: any) {
-      setFeedback({ text: err.message || 'Recovery failed', success: false });
+    } catch {
+      setFeedback({ text: 'Recovery failed. Please try again.', success: false });
     } finally {
       setLoading(false);
     }
@@ -82,6 +91,8 @@ export default function ForgotPasswordScreen() {
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="email"
             placeholder="name@company.com"
           />
         </View>

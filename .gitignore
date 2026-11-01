@@ -1,7 +1,9 @@
-# Environment Variables
+# Environment Variables (secrets stay out of git; only the template is tracked)
 .env
 .env.local
 .env.*.local
+.env.*
+!.env.example
 
 # Node
 node_modules/
